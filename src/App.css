@@ -1,0 +1,635 @@
+/* Login Page Styling */
+.login-page-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh; /* Full viewport height */
+    width: 100%;
+    background-color: var(--background-medium); /* Consistent background */
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* Re-using .alumni-form-card for login form, as it looks good */
+
+/* Logout Button Styling */
+.logout-button {
+    padding: 8px 15px;
+    border: 1px solid var(--primary-color-dark);
+    border-radius: 5px;
+    background-color: transparent;
+    color: var(--primary-color-dark);
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    margin-left: 15px; /* Space from search bar */
+    flex-shrink: 0; /* Prevent button from shrinking */
+}
+
+.logout-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Header actions layout */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* Space between search and logout button */
+    flex-wrap: wrap;
+    justify-content: flex-end; /* Align right */
+    flex-grow: 1; /* Allow actions to grow if needed */
+}
+
+/* Adjustments for responsiveness on smaller screens */
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column; /* Stack search and logout on smaller screens */
+        align-items: center;
+        gap: 10px;
+        width: 100%; /* Take full width when stacked */
+    }
+    .logout-button {
+        margin-left: 0; /* Remove specific margin when stacked */
+    }
+}
+
+/* Color Variables */
+:root {
+  --primary-color: #E53935;     /* Main Red (AVCN) */
+  --primary-color-dark: #C62828; /* Darker red */
+  --primary-color-light: #FFCDD2; /* Lighter red */
+  
+  --secondary-color: #42A5F5;    /* A complementary Blue (AAVC) */
+  --secondary-color-dark: #1976D2; /* Darker Blue */
+
+  --background-light: #fdfdfd;   
+  --background-medium: #f0f2f5;  
+  --card-background: #ffffff;   
+
+  --text-dark: #212121;         
+  --text-medium: #616161;       
+  --border-light: #e0e0e0;      
+  --border-medium: #bdbdbd;     
+  
+  --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.08); 
+  --shadow-medium: 0 8px 25px rgba(0, 0, 0, 0.15); 
+}
+
+/* General Body and Root Styles */
+#root {
+  margin: 0 auto;
+  padding: 0;
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Oxygen', 
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--background-medium); 
+  color: var(--text-dark); 
+}
+
+.App {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 3rem; 
+}
+
+/* Header Styling */
+.header-container {
+  width: 100%;
+  background-color: var(--card-background); 
+  padding: 20px 30px; 
+  box-shadow: var(--shadow-light); 
+  margin-bottom: 30px; 
+  display: flex; 
+  justify-content: center; 
+  border-bottom: 1px solid var(--border-light); 
+}
+
+.header-content {
+  max-width: 1200px; 
+  width: 100%; 
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; 
+  gap: 30px; 
+  flex-wrap: wrap; 
+}
+
+.logo-placeholder {
+  width: 60px; 
+  height: 60px;
+  background-color: var(--primary-color-light); 
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1.2em;
+  color: var(--primary-color-dark); 
+  overflow: hidden; 
+  flex-shrink: 0; 
+}
+
+.logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.header-title {
+  color: var(--primary-color); 
+  margin: 0;
+  font-size: 2.5em; 
+  font-weight: 700; 
+  flex-grow: 1; 
+  text-align: left; 
+}
+
+/* Search Bar Wrapper inside Header */
+.header-search-bar {
+  flex-basis: 380px; 
+  flex-grow: 1; 
+  max-width: 500px; 
+}
+
+.search-input-wrapper { 
+  position: relative; 
+  display: flex; 
+  align-items: center;
+  width: 100%;
+}
+
+.header-search-bar input { 
+  width: 100%;
+  padding: 14px 50px 14px 25px; 
+  border: 1px solid var(--border-light);
+  border-radius: 30px; 
+  font-size: 1.05em; 
+  outline: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); 
+  transition: all 0.3s ease-in-out;
+}
+
+.header-search-bar input:focus {
+  border-color: var(--primary-color); 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); 
+}
+
+.search-icon {
+  position: absolute; 
+  right: 20px; 
+  width: 22px; 
+  height: 22px;
+  color: var(--text-medium); 
+  pointer-events: none; 
+}
+
+/* NEW: Main Content Area with Sidebar */
+.content-area-wrapper {
+  display: flex; 
+  justify-content: center; 
+  width: 100%;
+  max-width: 1400px; /* Increased overall max width for more space */
+  margin: 0 auto;
+  gap: 50px; /* Increased space between main content and sidebar */
+  padding: 0 30px; /* Increased horizontal padding for the wrapper */
+  box-sizing: border-box;
+}
+
+.main-content-panel {
+  flex-grow: 1; 
+  max-width: 900px; /* Adjusted max width for main content area */
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+}
+
+.sidebar {
+  flex-shrink: 0; 
+  width: 380px; /* Increased width for the sidebar */
+  background-color: var(--background-light); 
+  border-radius: 12px;
+  box-shadow: var(--shadow-light);
+  padding: 25px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 25px; 
+  position: sticky; 
+  top: 30px; 
+  align-self: flex-start; 
+}
+
+.sidebar h2 {
+  color: var(--primary-color-dark);
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.8em;
+  font-weight: 700;
+  text-align: center;
+}
+
+.chart-card {
+  background-color: var(--card-background);
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.chart-card h3 {
+  color: var(--text-dark);
+  font-size: 1.1em;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.no-data-message {
+  color: var(--text-medium);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Filters Container */
+.filters-container {
+  width: 100%;
+  max-width: 1140px; 
+  display: flex;
+  flex-wrap: wrap; 
+  gap: 15px; 
+  justify-content: center; 
+  margin-bottom: 30px; 
+  padding: 0 20px; 
+  box-sizing: border-box;
+}
+
+.filter-dropdown {
+  padding: 10px 15px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background-color: var(--card-background);
+  font-size: 1em;
+  outline: none;
+  cursor: pointer;
+  appearance: none; 
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23E53935%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L155.7%20220.7c-4.7%204.7-12.2%204.7-16.9%200L18.7%2074.5a17.6%2017.6%200%200%200-13-5.1%2017.6%2017.6%200%200%200-13%205.1c-6.5%206.5-6.5%2017%200%2023.5l123.5%20123.5c4.7%204.7%2012.2%204.7%2016.9%200l123.5-123.5c6.5-6.5%206.5-17.1%200-23.5%20-6.5-6.4-17.1-6.4-23.6.1z%22%2F%3E%3C%2Fsvg%3E'); 
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); 
+}
+
+.filter-dropdown:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-color-light); 
+}
+
+/* Clear Filters Button */
+.clear-filters-button {
+  padding: 10px 18px; 
+  border: none;
+  border-radius: 8px;
+  background-color: var(--text-medium); 
+  color: white;
+  font-size: 0.95em;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.clear-filters-button:hover {
+  background-color: #5a6268; 
+  transform: translateY(-1px);
+}
+
+/* Add New/Edit Buttons */
+.add-alumnus-button, .edit-alumnus-button {
+  padding: 8px 15px; 
+  border: none;
+  border-radius: 5px; 
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.add-alumnus-button {
+  background-color: #28a745; 
+  color: white;
+  margin-left: auto; 
+}
+
+.add-alumnus-button:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+}
+
+.edit-alumnus-button {
+  background-color: var(--primary-color); 
+  color: white; 
+  margin-top: 15px; 
+  align-self: flex-end; 
+}
+
+.edit-alumnus-button:hover {
+  background-color: var(--primary-color-dark); 
+  transform: translateY(-1px);
+}
+
+/* Alumni List and Card Styling */
+.alumni-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+  gap: 20px; 
+  justify-content: center;
+  width: 100%; 
+  max-width: 1140px; 
+  padding: 0 20px; 
+  box-sizing: border-box;
+}
+
+.alumni-card {
+  background-color: var(--card-background);
+  border: none; 
+  border-radius: 12px;
+  padding: 25px; 
+  text-align: left;
+  box-shadow: var(--shadow-light); 
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+}
+
+.alumni-card:hover {
+  transform: translateY(-5px); 
+  box-shadow: var(--shadow-medium); 
+}
+
+/* Subtle red border on top of cards for accent */
+.alumni-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px; /* Height of the accent bar */
+  background-color: var(--primary-color);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+/* Ensure padding inside card is below the accent bar */
+.alumni-card {
+    position: relative; /* For ::before pseudo-element */
+    padding-top: 30px; /* Adjust padding to make space for the ::before pseudo-element */
+}
+
+
+.alumni-card h2 {
+  color: var(--primary-color-dark); 
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.5em; 
+  font-weight: 700; 
+  border-bottom: 1px solid var(--border-light); 
+  padding-bottom: 10px;
+}
+
+.alumni-card p {
+  margin: 6px 0; 
+  font-size: 0.9em;
+  line-height: 1.4;
+  color: var(--text-medium); 
+  /* Fix for long emails/words overflowing */
+  word-break: break-word; 
+  overflow-wrap: break-word; 
+}
+
+.alumni-card p strong {
+  color: var(--text-dark); 
+  min-width: 75px; 
+  display: inline-block; 
+}
+
+
+/* --- Add New/Edit Form Styling --- */
+.alumni-form-overlay {
+  position: fixed; 
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7); 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; 
+}
+
+.alumni-form-card {
+  background-color: var(--card-background);
+  padding: 35px 40px; 
+  border-radius: 15px; 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); 
+  width: 100%;
+  max-width: 700px; 
+  max-height: 90vh; 
+  overflow-y: auto; 
+  position: relative;
+  text-align: left; 
+}
+
+.alumni-form-card h2 {
+  text-align: center;
+  color: var(--primary-color); 
+  margin-top: 0;
+  margin-bottom: 30px; 
+  font-size: 2.2em;
+}
+
+.form-group {
+  margin-bottom: 18px; 
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px; 
+  font-weight: 600;
+  color: var(--text-medium);
+  font-size: 0.98em;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group textarea,
+.form-group select { 
+  width: calc(100% - 22px); 
+  padding: 12px; 
+  border: 1px solid var(--border-light);
+  border-radius: 8px; 
+  font-size: 1em;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: #fcfcfc; 
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-color-light); 
+}
+
+.form-group textarea {
+  resize: vertical; 
+  min-height: 100px; 
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end; 
+  gap: 15px; 
+  margin-top: 30px;
+}
+
+.form-actions button {
+  padding: 14px 30px; 
+  border: none;
+  border-radius: 8px;
+  font-size: 1.05em;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.form-actions button[type="submit"] {
+  background-color: var(--primary-color); 
+  color: white;
+}
+
+.form-actions button[type="submit"]:hover {
+  background-color: var(--primary-color-dark);
+  transform: translateY(-2px);
+}
+
+.form-actions button[type="submit"]:disabled {
+  background-color: var(--primary-color-light);
+  cursor: not-allowed;
+}
+
+.form-actions .cancel-button {
+  background-color: var(--text-medium); 
+  color: white;
+}
+
+.form-actions .cancel-button:hover {
+  background-color: #5a6268;
+}
+
+.form-error {
+  color: var(--primary-color); 
+  text-align: center;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) { 
+    .content-area-wrapper {
+        flex-direction: column; 
+        align-items: center; 
+        gap: 40px; 
+    }
+    .main-content-panel {
+        max-width: 100%; 
+        padding: 0; 
+    }
+    .sidebar {
+        width: 100%; 
+        max-width: 600px; 
+        position: static; 
+        align-self: auto;
+    }
+    .alumni-list {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+    }
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column; 
+    align-items: center; 
+  }
+  .logo-placeholder {
+    width: 50px;
+    height: 50px;
+  }
+  .header-title {
+    font-size: 2em;
+    text-align: center; 
+    margin-bottom: 0; 
+  }
+  .header-search-bar {
+    max-width: 90%; 
+  }
+  .search-input-wrapper {
+    margin-top: 10px; 
+  }
+  .main-content-wrapper { 
+    padding: 0 15px; 
+  }
+  .filters-container {
+    justify-content: center; 
+    padding: 0 10px;
+    gap: 10px;
+  }
+  .alumni-list {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
+    gap: 15px;
+    padding: 0 10px;
+  }
+  .alumni-card {
+    padding: 20px;
+    padding-top: 25px; 
+  }
+  .alumni-card h2 {
+      font-size: 1.3em;
+  }
+  .alumni-card p {
+      font-size: 0.85em;
+  }
+  .alumni-form-card {
+      max-width: 95%;
+      padding: 25px;
+  }
+  .form-actions {
+      flex-direction: column;
+      gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-content {
+    align-items: center; 
+  }
+  .alumni-list {
+    grid-template-columns: 1fr;
+    padding: 0 10px;
+  }
+  .header-title {
+    font-size: 1.6em;
+  }
+  .search-bar-container input { 
+    font-size: 0.95em;
+  }
+}
