@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import Login from './components/Login';
@@ -44,9 +44,9 @@ function AppContent() {
 function AppWithAuth() {
     return (
         <AuthProvider>
-            <BrowserRouter>
+            <Router>
                 <AppContent />
-            </BrowserRouter>
+            </Router>
         </AuthProvider>
     );
 }
