@@ -106,7 +106,7 @@ function DashboardPage() {
         const allYearsInData = [...new Set(alumni.map(p => String(p.Year)).filter(Boolean))].sort((a, b) => parseInt(a) - parseInt(b));
 
         const aggregatedYearData = allYearsInData.map(year => {
-            const yearData = { year };
+            const yearData = { year, AAVC: 0, AVCN: 0 };
             uniquePrograms.forEach(program => {
                 yearData[program] = yearProgramCounts[year]?.[program] || 0;
             });
@@ -116,14 +116,15 @@ function DashboardPage() {
 
         const totalCountryCounts = {};
         for (const country in countryProgramCounts) {
-            totalCountryCounts[country] = Object.values(countryProgramCounts[country]).reduce((sum, count) => sum + count, 0);
+            const countsObj = countryProgramCounts[country] || {};
+            totalCountryCounts[country] = Object.values(countsObj).reduce((sum, count) => sum + (Number(count) || 0), 0);
         }
         const topCountries = Object.keys(totalCountryCounts)
             .sort((a, b) => totalCountryCounts[b] - totalCountryCounts[a])
             .slice(0, 10);
 
         const aggregatedCountryData = topCountries.map(country => {
-            const countryData = { country };
+            const countryData = { country, AAVC: 0, AVCN: 0 };
             uniquePrograms.forEach(program => {
                 countryData[program] = countryProgramCounts[country]?.[program] || 0;
             });
