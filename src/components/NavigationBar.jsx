@@ -14,15 +14,17 @@ const NavigationBar = ({ onLogout }) => {
     return (
         <nav className="navbar-container">
             <div className="navbar-brand">
-                <span className="navbar-logo-text">VACFA Alumni & Screening Portal</span>
+                <span className="navbar-logo-text">AAVC Alumni & Screening Portal</span>
             </div>
             <div className="navbar-links">
-                <NavLink 
-                    to="/dashboard" 
-                    className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
-                >
-                    Alumni Directory
-                </NavLink>
+                {isAdmin && (
+                    <NavLink 
+                        to="/dashboard" 
+                        className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+                    >
+                        Alumni Directory
+                    </NavLink>
+                )}
                 <NavLink 
                     to="/screening" 
                     className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}

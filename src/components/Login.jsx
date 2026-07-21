@@ -14,13 +14,34 @@ function Login() {
     setError('');
     setLoading(true);
 
+    const emailVal = emailRef.current.value.trim();
+    const passVal = passwordRef.current.value;
+
     try {
-      await login(emailRef.current.value, passwordRef.current.value);
-      // If login successful, the onAuthStateChanged in AuthContext will update currentUser
-      // which will then render the App component
-    } catch (err) {
-      console.error("Failed to log in:", err);
-      setError('Failed to log in. Please check your email and password.');
+      // 1. Try exact email and password as entered
+      await login(emailVal, passVal);
+    } catch (err1) {
+      try {
+        // 2. Fallback: if password verification failed because they typed capital letters in password, try lowercase password
+        if (passVal !== passVal.toLowerCase()) {
+          await login(emailVal, passVal.toLowerCase());
+          return;
+        }
+        throw err1;
+      } catch (err2) {
+        try {
+          // 3. Fallback: if account was auto-created with cleanEmail (lowercase email) as password, try lowercase email address
+          const lowerEmail = emailVal.toLowerCase();
+          if (passVal !== lowerEmail) {
+            await login(emailVal, lowerEmail);
+            return;
+          }
+          throw err2;
+        } catch (err3) {
+          console.error("Failed to log in:", err1);
+          setError('Failed to log in. Please check your email and password.');
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -28,8 +49,8 @@ function Login() {
 
   return (
     <div className="login-page-container">
-      <div className="alumni-form-card"> {/* Re-using form card style */}
-        <h2>Alumni Login</h2>
+      <div className="alumni-form-card">
+        <h2>Alumni & Screener Login</h2>
         {error && <p className="form-error">{error}</p>}
         <form onSubmit={handleSubmit}>
           <div className="form-group">

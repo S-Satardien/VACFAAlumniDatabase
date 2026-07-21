@@ -7,6 +7,7 @@ import NavigationBar from './components/NavigationBar';
 import DashboardPage from './components/DashboardPage';
 import ScreeningWorkspace from './components/ScreeningWorkspace';
 import ScreeningAdmin from './components/ScreeningAdmin';
+import { isUserAdmin } from './config/admins';
 
 function AppContent() {
     const { currentUser, logout } = useAuth();
@@ -28,14 +29,16 @@ function AppContent() {
         );
     }
 
+    const isAdmin = isUserAdmin(currentUser.email);
+
     return (
         <div className="App">
             <NavigationBar onLogout={handleLogout} />
             <Routes>
-                <Route path="/dashboard" element={<DashboardPage />} />
+                {isAdmin && <Route path="/dashboard" element={<DashboardPage />} />}
                 <Route path="/screening" element={<ScreeningWorkspace />} />
-                <Route path="/screening/admin" element={<ScreeningAdmin />} />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                {isAdmin && <Route path="/screening/admin" element={<ScreeningAdmin />} />}
+                <Route path="*" element={<Navigate to={isAdmin ? "/dashboard" : "/screening"} replace />} />
             </Routes>
         </div>
     );

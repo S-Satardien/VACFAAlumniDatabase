@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { db, firebaseConfig } from '../firebaseConfig';
+import { db, auth, firebaseConfig } from '../firebaseConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { isUserAdmin } from '../config/admins';
 import ScoringForm from './ScoringForm';
@@ -157,6 +157,18 @@ const ScreeningAdmin = () => {
         } catch (err) {
             console.error("Error saving assignment:", err);
             alert("Failed to save assignment.");
+        }
+    };
+
+    const handleDeleteAssignment = async (assignItem) => {
+        if (!window.confirm(`Are you sure you want to delete the screener assignment for ${assignItem.screenerName || assignItem.screenerEmail}?`)) return;
+        try {
+            await deleteDoc(doc(db, "alumni", "screening_data", "screening_assignments", assignItem.id));
+            setAssignments(prev => prev.filter(item => item.id !== assignItem.id));
+            alert(`Screener assignment for ${assignItem.screenerEmail} has been deleted.`);
+        } catch (err) {
+            console.error("Error deleting screener assignment:", err);
+            alert("Failed to delete screener assignment.");
         }
     };
 
@@ -440,25 +452,48 @@ const ScreeningAdmin = () => {
             await Promise.all(deletePromises);
             setImportProgress(`Cleared ${existingSnap.docs.length} records and ${existingScoresSnap.docs.length} scores. Processing ${rows.length} rows...`);
 
+            // Fuzzy property lookup helper that handles exact matches, trimmed keys, and case/space variations
+            const getVal = (row, keys) => {
+                if (!row) return '';
+                for (const k of keys) {
+                    if (row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') {
+                        return String(row[k]).trim();
+                    }
+                }
+                const rowKeys = Object.keys(row);
+                for (const candidate of keys) {
+                    const cleanCandidate = candidate.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    for (const actualKey of rowKeys) {
+                        const cleanActual = actualKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (cleanActual === cleanCandidate || cleanActual.includes(cleanCandidate) || cleanCandidate.includes(cleanActual)) {
+                            if (row[actualKey] !== undefined && row[actualKey] !== null && String(row[actualKey]).trim() !== '') {
+                                return String(row[actualKey]).trim();
+                            }
+                        }
+                    }
+                }
+                return '';
+            };
+
             // --- Step 1: Deduplicate rows (keep last submission per email, fallback to name) ---
             const dedupMap = new Map();
             const duplicatesLog = [];
             let totalRawRows = 0;
             for (const r of rows) {
-                const rawEmail = String(r['Email'] || r['email'] || r['E-mail'] || '').trim().toLowerCase();
-                const rawName = String(r['Name'] || r['name'] || r['Full Name'] || '').trim();
+                const rawEmail = getVal(r, ['Email', 'email', 'E-mail']).toLowerCase();
+                const rawName = getVal(r, ['Name', 'name', 'Full Name']);
                 if (!rawName && !rawEmail) continue;
                 totalRawRows++;
                 const dedupKey = rawEmail || rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
                 if (dedupMap.has(dedupKey)) {
                     const prev = dedupMap.get(dedupKey);
                     duplicatesLog.push({
-                        name: rawName || prev['Name'] || prev['name'] || 'Unknown',
-                        email: rawEmail || prev['Email'] || prev['email'] || 'No email',
-                        country: String(r['Country of Residence'] || r['Country'] || prev['Country of Residence'] || prev['Country'] || ''),
-                        institution: String(r['Name of your Institution'] || r['Institution'] || prev['Name of your Institution'] || prev['Institution'] || ''),
-                        removedSubmissionDate: String(prev['Submission Date'] || prev['submissionDate'] || 'Earlier submission'),
-                        keptSubmissionDate: String(r['Submission Date'] || r['submissionDate'] || 'Latest submission'),
+                        name: rawName || getVal(prev, ['Name', 'name']) || 'Unknown',
+                        email: rawEmail || getVal(prev, ['Email', 'email']) || 'No email',
+                        country: getVal(r, ['Country of Residence', 'Country']) || getVal(prev, ['Country of Residence', 'Country']),
+                        institution: getVal(r, ['Name of Current Institution / Employer:', 'Name of your Institution', 'Institution']) || getVal(prev, ['Name of Current Institution / Employer:', 'Name of your Institution', 'Institution']),
+                        removedSubmissionDate: getVal(prev, ['Submission Date', 'submissionDate']) || 'Earlier submission',
+                        keptSubmissionDate: getVal(r, ['Submission Date', 'submissionDate']) || 'Latest submission',
                         reason: `Superseded by later submission (${rawEmail || rawName})`
                     });
                 }
@@ -475,8 +510,8 @@ const ScreeningAdmin = () => {
             // --- Step 3: Process each unique row (DQ check + country/cohort assignment) ---
             const processedApplicants = [];
             for (const r of uniqueRows) {
-                const rawEmail = String(r['Email'] || r['email'] || r['E-mail'] || '').trim().toLowerCase();
-                const rawName = String(r['Name'] || r['name'] || r['Full Name'] || '').trim();
+                const rawEmail = getVal(r, ['Email', 'email', 'E-mail']).toLowerCase();
+                const rawName = getVal(r, ['Name', 'name', 'Full Name']);
                 const emailPrefix = rawEmail.split('@')[0] || '';
                 const cleanName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -508,20 +543,19 @@ const ScreeningAdmin = () => {
                     }
                 }
 
-                // Check self-reported attendance
-                const attendedBefore = String(
-                    r['Have you attended the African Vaccinology Course (AVC/AAVC) before?'] ||
-                    r['Have you attended AAVC before?'] || ''
-                ).trim().toLowerCase();
-                if (!isDQ && (attendedBefore === 'yes' || attendedBefore.startsWith('y'))) {
-                    isDQ = true;
-                    dqReason = `Applicant self-reported attending AAVC previously (${attendedBefore})`;
-                }
+                // Check self-reported attendance (kept for information purposes only, no longer auto-disqualifies)
+                const attendedBefore = getVal(r, [
+                    'Have you previously attended the Annual African Vaccinology Course?',
+                    'Have you attended the Annual African Vaccinology Course (AAVC) in the past?',
+                    'Have you attended the African Vaccinology Course (AVC/AAVC) before?',
+                    'Have you attended AAVC before?',
+                    'previouslyAttendedAAVC'
+                ]).toLowerCase();
 
                 // Determine province/cohort
-                const rawCountry = String(r['Country of Residence'] || r['Country'] || '').trim();
-                const rawProvince = String(r['If South Africa, indicate which province:'] || r['Province'] || '').trim().toUpperCase();
-                const institutionStr = String(r['Name of your Institution'] || r['Institution'] || '').trim().toUpperCase();
+                const rawCountry = getVal(r, ['Country of Residence', 'Country']);
+                const rawProvince = getVal(r, ['If South Africa, indicate which province:', 'Province']).toUpperCase();
+                const institutionStr = getVal(r, ['Name of Current Institution / Employer:', 'Name of your Institution', 'Institution', 'institution']).toUpperCase();
                 let cohort = rawCountry || 'Unknown';
 
                 if (rawCountry.toLowerCase().includes('south africa')) {
@@ -553,24 +587,37 @@ const ScreeningAdmin = () => {
                     id: docId,
                     name: rawName,
                     email: rawEmail,
-                    gender: String(r['Gender'] || ''),
+                    dateOfBirth: getVal(r, ['Date of Birth', 'DOB', 'dateOfBirth']),
+                    gender: getVal(r, ['Gender', 'gender']),
+                    nationality: getVal(r, ['Nationality', 'nationality']),
                     countryOfResidence: rawCountry,
                     cohort: cohort, // preliminary — will be updated by cohort splitting
                     province: rawProvince,
-                    institution: String(r['Name of your Institution'] || r['Institution'] || ''),
-                    currentPosition: String(r['Current Position'] || ''),
-                    highestEducation: String(r['Highest Education'] || ''),
-                    previousExperience: String(r['Previous Experience in Vaccinology'] || ''),
-                    spokenEnglish: String(r['Spoken English'] || ''),
-                    writtenEnglish: String(r['Written English'] || ''),
-                    cvUrl: String(r['Abridged Curriculum Vitae (CV) - MAX 2 PAGES'] || r['cvUrl'] || ''),
-                    motivationLetterUrl: String(r['Motivation Letter - MAX 1 PAGE'] || r['motivationLetterUrl'] || ''),
-                    supportLetterUrl: String(r['Support Letter from your supervisor / Line Manager - MAX 1 PAGE'] || r['supportLetterUrl'] || ''),
-                    lineManagerName: String(r['Name of your Line Manager / Supervisor'] || ''),
-                    lineManagerEmail: String(r['Email address of your Line Manager / Supervisor'] || ''),
-                    lineManagerOfficePhone: String(r['Office Phone Number'] || ''),
-                    lineManagerMobilePhone: String(r['Mobile Phone Number'] || ''),
-                    previouslyAttendedAAVC: attendedBefore,
+                    mobilePhone: getVal(r, ['Mobile Telephone Number', 'Mobile Phone Number', 'Mobile', 'mobilePhone']),
+                    officePhone: getVal(r, ['Office Telephone Number', 'Office Phone', 'officePhone']),
+                    institution: getVal(r, ['Name of Current Institution / Employer:', 'Name of your Institution', 'Institution', 'institution']),
+                    institutionAddress: getVal(r, ['Address of current Institution / Employer:', 'Address', 'institutionAddress']),
+                    currentPosition: getVal(r, ['Current Employment Position', 'Current Position', 'currentPosition']),
+                    highestEducation: getVal(r, ['Highest level of education', 'Highest Education', 'highestEducation']),
+                    previousExperience: getVal(r, ['Previous Relevant work experience in vaccinology', 'Previous Experience in Vaccinology', 'previousExperience']),
+                    spokenEnglish: getVal(r, ['Proficiency of your spoken English', 'Spoken English', 'spokenEnglish']),
+                    writtenEnglish: getVal(r, ['Proficiency of your written English', 'Written English', 'writtenEnglish']),
+                    previouslyAttendedAAVC: getVal(r, ['Have you previously attended the Annual African Vaccinology Course?', 'Have you attended the Annual African Vaccinology Course (AAVC) in the past?', 'Have you attended the African Vaccinology Course (AVC/AAVC) before?', 'Have you attended AAVC before?', 'previouslyAttendedAAVC']) || 'No',
+                    attendanceYear: getVal(r, ['Which year attended', 'attendanceYear']),
+                    isNITAGMember: getVal(r, ['Have you been appointed by your Minister of Health to serve on your National Immunization Technical Advisory Group?', 'NITAG Member', 'isNITAGMember']) || 'No',
+                    nitagRole: getVal(r, ['NITAG Role', 'nitagRole']),
+                    attendedOtherCourse: getVal(r, ['Have you attended any OTHER vaccinology course in the past?', 'attendedOtherCourse']) || 'No',
+                    otherCourseDetail: getVal(r, ['If yes to the question above, specify the course attended and which year.', 'otherCourseDetail']),
+                    cvUrl: getVal(r, ['Abridged Curriculum Vitae (CV) - MAX 2 PAGES', 'cvUrl']),
+                    motivationLetterUrl: getVal(r, ['Motivation Letter - MAX 1 PAGE', 'motivationLetterUrl']),
+                    supportLetterUrl: getVal(r, ['Support Letter from your supervisor / Line Manager - MAX 1 PAGE', 'supportLetterUrl']),
+                    lineManagerTitle: getVal(r, ['Title of Line Manager', 'lineManagerTitle']),
+                    lineManagerName: getVal(r, ['Name of Line Manager', 'Name of your Line Manager / Supervisor', 'lineManagerName']),
+                    lineManagerEmail: getVal(r, ['Email of Line Manager', 'Email address of your Line Manager / Supervisor', 'lineManagerEmail']),
+                    lineManagerOfficePhone: getVal(r, ["Line Manager's Office Telephone Number", 'Office Phone Number', 'lineManagerOfficePhone']),
+                    lineManagerMobilePhone: getVal(r, ["Line Manager's Mobile Telephone Number", 'Mobile Phone Number', 'lineManagerMobilePhone']),
+                    passportNumber: getVal(r, ['Passport Number / Identification Number', 'passportNumber']),
+                    submissionDate: getVal(r, ['Submission Date', 'submissionDate']),
                     autoDisqualified: isDQ,
                     disqualificationReason: dqReason,
                     importedAt: new Date().toISOString()
@@ -870,16 +917,28 @@ const ScreeningAdmin = () => {
                         {assignments.length > 0 ? (
                             <div className="assignments-scroll-list">
                                 {assignments.map(a => (
-                                    <div key={a.id} className="assignment-item">
-                                        <div className="assign-item-header">
-                                            <strong>{a.screenerName}</strong>
-                                            <span className="assign-email">{a.screenerEmail}</span>
+                                    <div key={a.id} className="assignment-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                        <div>
+                                            <div className="assign-item-header">
+                                                <strong>{a.screenerName}</strong>
+                                                <span className="assign-email">{a.screenerEmail}</span>
+                                            </div>
+                                            <div className="assign-badges">
+                                                {(a.assignedCountries || []).map(c => (
+                                                    <span key={c} className="assign-cohort-badge">{c}</span>
+                                                ))}
+                                                {(a.assignedCountries || []).length === 0 && <span className="text-muted">No countries assigned yet</span>}
+                                            </div>
                                         </div>
-                                        <div className="assign-badges">
-                                            {(a.assignedCountries || []).map(c => (
-                                                <span key={c} className="assign-cohort-badge">{c}</span>
-                                            ))}
-                                            {(a.assignedCountries || []).length === 0 && <span className="text-muted">No countries assigned yet</span>}
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => handleDeleteAssignment(a)}
+                                                style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                                                title="Delete screener assignment"
+                                            >
+                                                🗑️ Delete
+                                            </button>
                                         </div>
                                     </div>
                                 ))}

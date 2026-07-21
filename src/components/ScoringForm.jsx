@@ -1,26 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import './ScoringForm.css';
 
-const MOTIVATION_PRESETS = [
-    // Acceptance / High Priority
-    "Directly involved in EPI / immunization programme. Strong potential to benefit from the course.",
-    "Works directly in vaccine clinical trials / research. High capacity to benefit.",
-    "Works in vaccine product development, manufacturing, or regulatory affairs.",
-    "Strong application with clear demonstration of need and capacity to benefit.",
-    "Occupies key role in maternal / adult vaccination or surveillance. Strong recommendation.",
-    "Newly appointed to a key immunization / public health role. High potential to benefit.",
-    // Review / Reserve
-    "Good application and capacity to benefit, but ranked lower due to country cohort size limits.",
-    "Indirectly involved in vaccine field / public health. May benefit from online course.",
-    "Early career / junior role with strong interest in vaccinology.",
-    "Involved in academic research / virology without direct clinical immunization involvement.",
-    // Rejection / Disqualification
-    "Not working directly with immunization programme or human vaccinology.",
-    "Incomplete application or missing required supporting documents (CV / Motivation / HOD letter).",
-    "No line manager / supervisor recommendation letter or approval.",
-    "Weak motivation letter and no demonstrated capacity to benefit.",
-    "Applicant previously attended AAVC (verified in alumni database).",
-    "Work focus is in veterinary / non-human vaccinology."
+const PRESET_GROUPS = [
+    {
+        label: "🟢 Acceptance / High Priority Motivations",
+        presets: [
+            "Directly involved in EPI / immunization programme. Strong potential to benefit from the course.",
+            "Works directly in vaccine clinical trials / research. High capacity to benefit.",
+            "Works in vaccine product development, manufacturing, or regulatory affairs.",
+            "Strong application with clear demonstration of need and capacity to benefit.",
+            "Occupies key role in maternal / adult vaccination or surveillance. Strong recommendation.",
+            "Newly appointed to a key immunization / public health role. High potential to benefit."
+        ]
+    },
+    {
+        label: "🟡 Review / Reserve Motivations",
+        presets: [
+            "Good application and capacity to benefit, but ranked lower due to country cohort size limits.",
+            "Indirectly involved in vaccine field / public health. May benefit from online course.",
+            "Early career / junior role with strong interest in vaccinology.",
+            "Involved in academic research / virology without direct clinical immunization involvement."
+        ]
+    },
+    {
+        label: "🔴 Rejection / Disqualification Motivations",
+        presets: [
+            "Not working directly with immunization programme or human vaccinology.",
+            "Incomplete application or missing required supporting documents (CV / Motivation / HOD letter).",
+            "No line manager / supervisor recommendation letter or approval.",
+            "Weak motivation letter and no demonstrated capacity to benefit.",
+            "Applicant previously attended AAVC (verified in alumni database).",
+            "Work focus is in veterinary / non-human vaccinology."
+        ]
+    }
 ];
 
 const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) => {
@@ -35,9 +47,32 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
         comments: applicant?.disqualificationReason || ''
     });
 
-    const [selectedPreset, setSelectedPreset] = useState('');
+    const [selectedPresets, setSelectedPresets] = useState([]);
+    const [customComment, setCustomComment] = useState('');
 
     useEffect(() => {
+        const parseComments = (rawComments) => {
+            const allPresets = PRESET_GROUPS.flatMap(g => g.presets);
+            const matched = [];
+            let remaining = rawComments || '';
+
+            allPresets.forEach(p => {
+                if (remaining.includes(p)) {
+                    matched.push(p);
+                    remaining = remaining.replace(p, '');
+                }
+            });
+
+            const cleanedCustom = remaining
+                .split('\n')
+                .map(line => line.replace(/^[•\-\*;\s]+/, '').replace(/[;\s]+$/, '').trim())
+                .filter(Boolean)
+                .join('\n');
+
+            setSelectedPresets(matched);
+            setCustomComment(cleanedCustom);
+        };
+
         if (existingScore) {
             const currentComments = existingScore.comments || '';
             setFormData({
@@ -50,13 +85,7 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 decision: existingScore.decision || 'Accept',
                 comments: currentComments
             });
-            if (MOTIVATION_PRESETS.includes(currentComments)) {
-                setSelectedPreset(currentComments);
-            } else if (currentComments.trim() !== '') {
-                setSelectedPreset('Other');
-            } else {
-                setSelectedPreset('');
-            }
+            parseComments(currentComments);
         } else if (applicant) {
             const initialComments = applicant.disqualificationReason || '';
             setFormData({
@@ -69,13 +98,7 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 decision: applicant.autoDisqualified ? 'Reject' : 'Accept',
                 comments: initialComments
             });
-            if (MOTIVATION_PRESETS.includes(initialComments)) {
-                setSelectedPreset(initialComments);
-            } else if (initialComments.trim() !== '') {
-                setSelectedPreset('Other');
-            } else {
-                setSelectedPreset('');
-            }
+            parseComments(initialComments);
         }
     }, [existingScore, applicant]);
 
@@ -95,19 +118,30 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
         setFormData(newData);
     };
 
-    const handlePresetChange = (e) => {
-        const val = e.target.value;
-        setSelectedPreset(val);
-        if (val && val !== 'Other') {
-            handleChange('comments', val);
-        } else if (val === 'Other') {
-            // Keep existing text or clear if it was a preset
-            if (MOTIVATION_PRESETS.includes(formData.comments)) {
-                handleChange('comments', '');
-            }
-        } else {
-            handleChange('comments', '');
+    const updateCommentsField = (presets, custom) => {
+        const parts = [...presets];
+        if (custom.trim()) {
+            parts.push(custom.trim());
         }
+        const combined = parts.map(p => `• ${p}`).join('\n');
+        handleChange('comments', combined);
+    };
+
+    const handleCheckboxToggle = (preset) => {
+        let nextPresets;
+        if (selectedPresets.includes(preset)) {
+            nextPresets = selectedPresets.filter(p => p !== preset);
+        } else {
+            nextPresets = [...selectedPresets, preset];
+        }
+        setSelectedPresets(nextPresets);
+        updateCommentsField(nextPresets, customComment);
+    };
+
+    const handleCustomCommentChange = (e) => {
+        const val = e.target.value;
+        setCustomComment(val);
+        updateCommentsField(selectedPresets, val);
     };
 
     const handleSubmit = (e) => {
@@ -242,52 +276,70 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                     </select>
                 </div>
 
-                <div className="comments-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <label className="rubric-label">Motivation / Comments for Ranking & Decision</label>
-                    <select
-                        value={selectedPreset}
-                        onChange={handlePresetChange}
-                        className="rubric-select"
-                        style={{ padding: '10px', fontSize: '0.95rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                    >
-                        <option value="">-- Select Standard Motivation / Comment --</option>
-                        <optgroup label="🟢 Acceptance / High Priority Motivations">
-                            <option value="Directly involved in EPI / immunization programme. Strong potential to benefit from the course.">Directly involved in EPI / immunization programme. Strong potential to benefit from the course.</option>
-                            <option value="Works directly in vaccine clinical trials / research. High capacity to benefit.">Works directly in vaccine clinical trials / research. High capacity to benefit.</option>
-                            <option value="Works in vaccine product development, manufacturing, or regulatory affairs.">Works in vaccine product development, manufacturing, or regulatory affairs.</option>
-                            <option value="Strong application with clear demonstration of need and capacity to benefit.">Strong application with clear demonstration of need and capacity to benefit.</option>
-                            <option value="Occupies key role in maternal / adult vaccination or surveillance. Strong recommendation.">Occupies key role in maternal / adult vaccination or surveillance. Strong recommendation.</option>
-                            <option value="Newly appointed to a key immunization / public health role. High potential to benefit.">Newly appointed to a key immunization / public health role. High potential to benefit.</option>
-                        </optgroup>
-                        <optgroup label="🟡 Review / Reserve Motivations">
-                            <option value="Good application and capacity to benefit, but ranked lower due to country cohort size limits.">Good application and capacity to benefit, but ranked lower due to country cohort size limits.</option>
-                            <option value="Indirectly involved in vaccine field / public health. May benefit from online course.">Indirectly involved in vaccine field / public health. May benefit from online course.</option>
-                            <option value="Early career / junior role with strong interest in vaccinology.">Early career / junior role with strong interest in vaccinology.</option>
-                            <option value="Involved in academic research / virology without direct clinical immunization involvement.">Involved in academic research / virology without direct clinical immunization involvement.</option>
-                        </optgroup>
-                        <optgroup label="🔴 Rejection / Disqualification Motivations">
-                            <option value="Not working directly with immunization programme or human vaccinology.">Not working directly with immunization programme or human vaccinology.</option>
-                            <option value="Incomplete application or missing required supporting documents (CV / Motivation / HOD letter).">Incomplete application or missing required supporting documents (CV / Motivation / HOD letter).</option>
-                            <option value="No line manager / supervisor recommendation letter or approval.">No line manager / supervisor recommendation letter or approval.</option>
-                            <option value="Weak motivation letter and no demonstrated capacity to benefit.">Weak motivation letter and no demonstrated capacity to benefit.</option>
-                            <option value="Applicant previously attended AAVC (verified in alumni database).">Applicant previously attended AAVC (verified in alumni database).</option>
-                            <option value="Work focus is in veterinary / non-human vaccinology.">Work focus is in veterinary / non-human vaccinology.</option>
-                        </optgroup>
-                        <optgroup label="✏️ Custom Option">
-                            <option value="Other">Other (Specify custom motivation below...)</option>
-                        </optgroup>
-                    </select>
+                <div className="comments-field" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <label className="rubric-label">
+                        Motivation / Comments for Ranking & Decision
+                        <span className="rubric-subtext">Select all applicable standard motivations and/or add custom notes below</span>
+                    </label>
 
-                    {selectedPreset === 'Other' && (
+                    <div className="presets-multi-select-box" style={{ 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '8px', 
+                        padding: '12px', 
+                        maxHeight: '260px', 
+                        overflowY: 'auto', 
+                        backgroundColor: '#f8fafc',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                    }}>
+                        {PRESET_GROUPS.map((group, gIdx) => (
+                            <div key={gIdx} className="preset-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <strong style={{ fontSize: '0.85rem', color: '#334155', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
+                                    {group.label}
+                                </strong>
+                                {group.presets.map((preset, pIdx) => {
+                                    const isChecked = selectedPresets.includes(preset);
+                                    return (
+                                        <label key={pIdx} style={{ 
+                                            display: 'flex', 
+                                            alignItems: 'flex-start', 
+                                            gap: '8px', 
+                                            fontSize: '0.85rem', 
+                                            cursor: 'pointer',
+                                            color: isChecked ? '#0f172a' : '#475569',
+                                            fontWeight: isChecked ? '600' : 'normal',
+                                            padding: '4px',
+                                            borderRadius: '4px',
+                                            backgroundColor: isChecked ? '#e0f2fe' : 'transparent'
+                                        }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isChecked} 
+                                                onChange={() => handleCheckboxToggle(preset)}
+                                                style={{ marginTop: '2px', cursor: 'pointer' }}
+                                            />
+                                            <span>{preset}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.85rem', fontWeight: '600', color: '#475569' }}>
+                            ✏️ Additional Custom Comments / Notes:
+                        </label>
                         <textarea 
-                            value={formData.comments} 
-                            onChange={(e) => handleChange('comments', e.target.value)}
-                            placeholder="Provide custom comments or reason for ranking/rejection..."
+                            value={customComment} 
+                            onChange={handleCustomCommentChange}
+                            placeholder="Type any custom motivation, interview notes, or clarification here..."
                             rows={3}
                             className="comments-textarea"
-                            style={{ marginTop: '4px', border: '1px solid #3b82f6', borderRadius: '8px', padding: '10px' }}
+                            style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px' }}
                         />
-                    )}
+                    </div>
                 </div>
             </div>
 
