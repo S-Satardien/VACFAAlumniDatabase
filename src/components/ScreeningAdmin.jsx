@@ -202,6 +202,40 @@ const ScreeningAdmin = () => {
         const masterWs = XLSX.utils.json_to_sheet(masterRows);
         XLSX.utils.book_append_sheet(wb, masterWs, "All Applicants Master");
 
+        // 1.5. Disqualified Sheet
+        const dqApplicants = applicants.filter(a => a.autoDisqualified);
+        if (dqApplicants.length > 0) {
+            const dqRows = dqApplicants.map(a => {
+                const sc = scores[a.id] || {};
+                return {
+                    "Submission Date": a.submissionDate || '',
+                    "Name": a.name || '',
+                    "Email": a.email || '',
+                    "DOB": a.dateOfBirth || '',
+                    "Gender": a.gender || '',
+                    "Nationality": a.nationality || '',
+                    "Country of Residence": a.countryOfResidence || '',
+                    "Province / Cohort": a.cohort || '',
+                    "Institution": a.institution || '',
+                    "Current Position": a.currentPosition || '',
+                    "Highest Education": a.highestEducation || '',
+                    "Previous Experience": a.previousExperience || '',
+                    "Spoken English": a.spokenEnglish || '',
+                    "Written English": a.writtenEnglish || '',
+                    "Disqualification Reason": a.disqualificationReason || 'Auto-Disqualified',
+                    "Previously Attended AAVC": a.previouslyAttendedAAVC || 'No',
+                    "Comments / Motivation": sc.comments || a.disqualificationReason || '',
+                    "CV URL": a.cvUrl || '',
+                    "Motivation Letter URL": a.motivationLetterUrl || '',
+                    "Support Letter URL": a.supportLetterUrl || '',
+                    "Line Manager Name": a.lineManagerName || '',
+                    "Line Manager Email": a.lineManagerEmail || ''
+                };
+            });
+            const dqWs = XLSX.utils.json_to_sheet(dqRows);
+            XLSX.utils.book_append_sheet(wb, dqWs, "Disqualified Applicants");
+        }
+
         // 2. Individual Sheet per Cohort/Country
         uniqueCohorts.forEach(cohort => {
             const cohortApps = applicants.filter(a => (a.cohort || a.countryOfResidence) === cohort);
@@ -236,6 +270,47 @@ const ScreeningAdmin = () => {
         XLSX.writeFile(wb, `AAVC_${selectedYear}_Screening_Master_Report.xlsx`);
     };
 
+    const handleExportDisqualifiedExcel = () => {
+        const dqApplicants = applicants.filter(a => a.autoDisqualified);
+        if (dqApplicants.length === 0) {
+            alert("No disqualified applicants to export.");
+            return;
+        }
+
+        const rows = dqApplicants.map(a => {
+            const sc = scores[a.id] || {};
+            return {
+                "Submission Date": a.submissionDate || '',
+                "Name": a.name || '',
+                "Email": a.email || '',
+                "DOB": a.dateOfBirth || '',
+                "Gender": a.gender || '',
+                "Nationality": a.nationality || '',
+                "Country of Residence": a.countryOfResidence || '',
+                "Province / Cohort": a.cohort || '',
+                "Institution": a.institution || '',
+                "Current Position": a.currentPosition || '',
+                "Highest Education": a.highestEducation || '',
+                "Previous Experience": a.previousExperience || '',
+                "Spoken English": a.spokenEnglish || '',
+                "Written English": a.writtenEnglish || '',
+                "Disqualification Reason": a.disqualificationReason || 'Auto-Disqualified',
+                "Previously Attended AAVC": a.previouslyAttendedAAVC || 'No',
+                "Comments / Motivation": sc.comments || a.disqualificationReason || '',
+                "CV URL": a.cvUrl || '',
+                "Motivation Letter URL": a.motivationLetterUrl || '',
+                "Support Letter URL": a.supportLetterUrl || '',
+                "Line Manager Name": a.lineManagerName || '',
+                "Line Manager Email": a.lineManagerEmail || ''
+            };
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, "Disqualified Applicants");
+        XLSX.writeFile(wb, `AAVC_${selectedYear}_Disqualified_Applicants.xlsx`);
+    };
+
     const handleImportExcel = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -251,14 +326,19 @@ const ScreeningAdmin = () => {
             const firstSheet = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
 
-            // --- Step 0: Clear existing applicants for this year ---
+            // --- Step 0: Clear existing applicants and scores for this year ---
             const targetCollName = `applicants_${selectedYear}`;
+            const scoreCollName = selectedYear === '2026' ? 'screening_scores' : `screening_scores_${selectedYear}`;
             const targetNumYear = parseInt(selectedYear, 10) || 2026;
-            setImportProgress(`Clearing existing ${selectedYear} applicant data...`);
+            setImportProgress(`Clearing existing ${selectedYear} applicant and score data...`);
             const existingSnap = await getDocs(collection(db, "alumni", "screening_data", targetCollName));
-            const deletePromises = existingSnap.docs.map(d => deleteDoc(doc(db, "alumni", "screening_data", targetCollName, d.id)));
+            const existingScoresSnap = await getDocs(collection(db, "alumni", "screening_data", scoreCollName));
+            const deletePromises = [
+                ...existingSnap.docs.map(d => deleteDoc(doc(db, "alumni", "screening_data", targetCollName, d.id))),
+                ...existingScoresSnap.docs.map(d => deleteDoc(doc(db, "alumni", "screening_data", scoreCollName, d.id)))
+            ];
             await Promise.all(deletePromises);
-            setImportProgress(`Cleared ${existingSnap.docs.length} existing records. Processing ${rows.length} rows...`);
+            setImportProgress(`Cleared ${existingSnap.docs.length} records and ${existingScoresSnap.docs.length} scores. Processing ${rows.length} rows...`);
 
             // --- Step 1: Deduplicate rows (keep last submission per email, fallback to name) ---
             const dedupMap = new Map();
@@ -459,7 +539,7 @@ const ScreeningAdmin = () => {
         return cohortMatch && statusMatch && searchMatch;
     });
 
-    const totalScored = Object.keys(scores).length;
+    const totalScored = applicants.filter(a => scores[a.id] && scores[a.id].totalScore !== undefined).length;
     const totalDQ = applicants.filter(a => a.autoDisqualified).length;
 
     const userAssignedCohorts = assignments.find(a => a.screenerEmail?.toLowerCase() === currentUser?.email?.toLowerCase())?.assignedCountries || [];
@@ -524,6 +604,10 @@ const ScreeningAdmin = () => {
 
                     <button onClick={handleExportMasterExcel} className="btn-master-export" disabled={importing}>
                         📊 Export Master Excel
+                    </button>
+
+                    <button onClick={handleExportDisqualifiedExcel} className="btn-master-export" style={{ background: '#c53030' }} disabled={importing}>
+                        🚫 Export Disqualified ({applicants.filter(a => a.autoDisqualified).length})
                     </button>
                 </div>
             </div>
