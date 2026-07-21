@@ -14,6 +14,8 @@ const ScreeningAdmin = () => {
     const [selectedYear, setSelectedYear] = useState('2026');
     const [importing, setImporting] = useState(false);
     const [importProgress, setImportProgress] = useState('');
+    const [importAuditReport, setImportAuditReport] = useState(null);
+    const [activeAuditTab, setActiveAuditTab] = useState('duplicates');
 
     const [applicants, setApplicants] = useState([]);
     const [scores, setScores] = useState({});
@@ -311,6 +313,58 @@ const ScreeningAdmin = () => {
         XLSX.writeFile(wb, `AAVC_${selectedYear}_Disqualified_Applicants.xlsx`);
     };
 
+    const handleExportAuditReport = () => {
+        if (!importAuditReport) return;
+        const wb = XLSX.utils.book_new();
+
+        // 1. Duplicates sheet
+        if (importAuditReport.duplicates && importAuditReport.duplicates.length > 0) {
+            const dupRows = importAuditReport.duplicates.map(d => ({
+                "Removed Name": d.name || '',
+                "Removed Email": d.email || '',
+                "Country": d.country || '',
+                "Institution": d.institution || '',
+                "Removed Submission Date": d.removedSubmissionDate || '',
+                "Kept Submission Date": d.keptSubmissionDate || '',
+                "Reason / Details": d.reason || ''
+            }));
+            const wsDup = XLSX.utils.json_to_sheet(dupRows);
+            XLSX.utils.book_append_sheet(wb, wsDup, "Duplicates Removed");
+        } else {
+            const wsDup = XLSX.utils.json_to_sheet([{ "Status": "No duplicate submissions found during import." }]);
+            XLSX.utils.book_append_sheet(wb, wsDup, "Duplicates Removed");
+        }
+
+        // 2. Disqualified sheet
+        if (importAuditReport.disqualified && importAuditReport.disqualified.length > 0) {
+            const dqRows = importAuditReport.disqualified.map(a => ({
+                "Applicant Name": a.name || '',
+                "Email": a.email || '',
+                "Country": a.countryOfResidence || '',
+                "Province / Cohort": a.cohort || '',
+                "Institution": a.institution || '',
+                "Current Position": a.currentPosition || '',
+                "Highest Education": a.highestEducation || '',
+                "Disqualification Reason": a.disqualificationReason || '',
+                "Submission Date": a.submissionDate || ''
+            }));
+            const wsDq = XLSX.utils.json_to_sheet(dqRows);
+            XLSX.utils.book_append_sheet(wb, wsDq, "Disqualified Applicants");
+        } else {
+            const wsDq = XLSX.utils.json_to_sheet([{ "Status": "No auto-disqualified applicants found during import." }]);
+            XLSX.utils.book_append_sheet(wb, wsDq, "Disqualified Applicants");
+        }
+
+        // 3. Splits sheet
+        if (importAuditReport.splits && importAuditReport.splits.length > 0) {
+            const splitRows = importAuditReport.splits.map(s => ({ "Cohort Split Summary": s }));
+            const wsSplit = XLSX.utils.json_to_sheet(splitRows);
+            XLSX.utils.book_append_sheet(wb, wsSplit, "Cohort Splits");
+        }
+
+        XLSX.writeFile(wb, `AAVC_${importAuditReport.year}_Import_Audit_Report.xlsx`);
+    };
+
     const handleImportExcel = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -342,6 +396,7 @@ const ScreeningAdmin = () => {
 
             // --- Step 1: Deduplicate rows (keep last submission per email, fallback to name) ---
             const dedupMap = new Map();
+            const duplicatesLog = [];
             let totalRawRows = 0;
             for (const r of rows) {
                 const rawEmail = String(r['Email'] || r['email'] || r['E-mail'] || '').trim().toLowerCase();
@@ -349,6 +404,18 @@ const ScreeningAdmin = () => {
                 if (!rawName && !rawEmail) continue;
                 totalRawRows++;
                 const dedupKey = rawEmail || rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (dedupMap.has(dedupKey)) {
+                    const prev = dedupMap.get(dedupKey);
+                    duplicatesLog.push({
+                        name: rawName || prev['Name'] || prev['name'] || 'Unknown',
+                        email: rawEmail || prev['Email'] || prev['email'] || 'No email',
+                        country: String(r['Country of Residence'] || r['Country'] || prev['Country of Residence'] || prev['Country'] || ''),
+                        institution: String(r['Name of your Institution'] || r['Institution'] || prev['Name of your Institution'] || prev['Institution'] || ''),
+                        removedSubmissionDate: String(prev['Submission Date'] || prev['submissionDate'] || 'Earlier submission'),
+                        keptSubmissionDate: String(r['Submission Date'] || r['submissionDate'] || 'Latest submission'),
+                        reason: `Superseded by later submission (${rawEmail || rawName})`
+                    });
+                }
                 dedupMap.set(dedupKey, r); // last submission wins
             }
             const uniqueRows = Array.from(dedupMap.values());
@@ -512,8 +579,22 @@ const ScreeningAdmin = () => {
                 }
             }
 
+            const disqualifiedLog = processedApplicants.filter(a => a.autoDisqualified);
+            const auditData = {
+                year: selectedYear,
+                totalRows: totalRawRows,
+                uniqueCount: count,
+                duplicates: duplicatesLog,
+                disqualified: disqualifiedLog,
+                splits: cohortSplitSummary,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                isOpen: true
+            };
+            setImportAuditReport(auditData);
+            setActiveAuditTab(duplicatesLog.length > 0 ? 'duplicates' : (disqualifiedLog.length > 0 ? 'disqualified' : 'splits'));
+
             const splitInfo = cohortSplitSummary.length > 0 ? `\n\nCohort Splits:\n${cohortSplitSummary.join('\n')}` : '';
-            alert(`Successfully imported ${count} unique applicants into AAVC ${selectedYear}!\nDuplicates removed: ${duplicatesRemoved}\nAuto-Disqualified: ${dqCount}${splitInfo}`);
+            alert(`Successfully imported ${count} unique applicants into AAVC ${selectedYear}!\nDuplicates removed: ${duplicatesRemoved}\nAuto-Disqualified: ${dqCount}${splitInfo}\n\nOpening detailed double-check report modal now...`);
             fetchData();
         } catch (err) {
             console.error("Excel import error:", err);
@@ -609,6 +690,17 @@ const ScreeningAdmin = () => {
                     <button onClick={handleExportDisqualifiedExcel} className="btn-master-export" style={{ background: '#c53030' }} disabled={importing}>
                         🚫 Export Disqualified ({applicants.filter(a => a.autoDisqualified).length})
                     </button>
+
+                    {importAuditReport && (
+                        <button 
+                            onClick={() => setImportAuditReport(prev => ({ ...prev, isOpen: true }))} 
+                            className="btn-master-export" 
+                            style={{ background: '#0284c7' }}
+                            disabled={importing}
+                        >
+                            📋 View Import Audit Report
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -861,6 +953,154 @@ const ScreeningAdmin = () => {
                     )}
                 </div>
             </div>
+
+            {/* Import Audit Report Modal */}
+            {importAuditReport && importAuditReport.isOpen !== false && (
+                <div className="admin-override-modal">
+                    <div className="override-modal-content" style={{ maxWidth: '1100px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
+                        <div className="modal-top" style={{ flexShrink: 0, borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>📋 AAVC {importAuditReport.year} Import Audit & Double-Check Report</h3>
+                                <p style={{ margin: '6px 0 0 0', fontSize: '0.9rem', color: '#64748b' }}>
+                                    Imported at {importAuditReport.timestamp} • Total Raw Spreadsheet Rows: <strong>{importAuditReport.totalRows}</strong> • Unique Applicants Saved: <strong>{importAuditReport.uniqueCount}</strong>
+                                </p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                <button onClick={handleExportAuditReport} className="btn-master-export" style={{ background: '#2E7D32', margin: 0, padding: '8px 16px', fontSize: '0.9rem', borderRadius: '8px' }}>
+                                    📥 Download Audit Excel
+                                </button>
+                                <button onClick={() => setImportAuditReport(prev => ({ ...prev, isOpen: false }))} className="btn-close-modal" title="Close" style={{ fontSize: '1.8rem', padding: '0 8px' }}>×</button>
+                            </div>
+                        </div>
+
+                        {/* Summary Cards */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', margin: '20px 0', flexShrink: 0 }}>
+                            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px' }}>DUPLICATES REMOVED</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#d97706', marginTop: '6px' }}>{importAuditReport.duplicates?.length || 0}</div>
+                            </div>
+                            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px' }}>AUTO-DISQUALIFIED</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#dc2626', marginTop: '6px' }}>{importAuditReport.disqualified?.length || 0}</div>
+                            </div>
+                            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.5px' }}>COHORT SPLITS (&gt;40)</div>
+                                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#2563eb', marginTop: '6px' }}>{importAuditReport.splits?.length || 0}</div>
+                            </div>
+                        </div>
+
+                        {/* Tabs */}
+                        <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #e2e8f0', marginBottom: '16px', flexShrink: 0 }}>
+                            <button 
+                                onClick={() => setActiveAuditTab('duplicates')} 
+                                style={{ padding: '10px 18px', border: 'none', background: activeAuditTab === 'duplicates' ? '#f59e0b' : 'transparent', color: activeAuditTab === 'duplicates' ? '#fff' : '#475569', fontWeight: 700, borderRadius: '8px 8px 0 0', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                🗑️ Duplicates Removed ({importAuditReport.duplicates?.length || 0})
+                            </button>
+                            <button 
+                                onClick={() => setActiveAuditTab('disqualified')} 
+                                style={{ padding: '10px 18px', border: 'none', background: activeAuditTab === 'disqualified' ? '#ef4444' : 'transparent', color: activeAuditTab === 'disqualified' ? '#fff' : '#475569', fontWeight: 700, borderRadius: '8px 8px 0 0', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                🚫 Auto-Disqualified ({importAuditReport.disqualified?.length || 0})
+                            </button>
+                            <button 
+                                onClick={() => setActiveAuditTab('splits')} 
+                                style={{ padding: '10px 18px', border: 'none', background: activeAuditTab === 'splits' ? '#3b82f6' : 'transparent', color: activeAuditTab === 'splits' ? '#fff' : '#475569', fontWeight: 700, borderRadius: '8px 8px 0 0', cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                                🔀 Cohort Splits ({importAuditReport.splits?.length || 0})
+                            </button>
+                        </div>
+
+                        {/* Tab Content */}
+                        <div style={{ overflowY: 'auto', flexGrow: 1, border: '1px solid #f1f5f9', borderRadius: '8px' }}>
+                            {activeAuditTab === 'duplicates' && (
+                                importAuditReport.duplicates?.length > 0 ? (
+                                    <table className="cohorts-table" style={{ width: '100%', fontSize: '0.88rem', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ background: '#f8fafc' }}>
+                                                <th style={{ padding: '12px' }}>Removed Name & Email</th>
+                                                <th style={{ padding: '12px' }}>Country & Institution</th>
+                                                <th style={{ padding: '12px' }}>Removed Submission Date</th>
+                                                <th style={{ padding: '12px' }}>Kept Submission Date (Latest)</th>
+                                                <th style={{ padding: '12px' }}>Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {importAuditReport.duplicates.map((d, idx) => (
+                                                <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <strong style={{ color: '#0f172a' }}>{d.name}</strong><br />
+                                                        <span style={{ color: '#64748b' }}>{d.email}</span>
+                                                    </td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <strong>{d.country || 'N/A'}</strong><br />
+                                                        <span style={{ color: '#64748b', fontSize: '0.8rem' }}>{d.institution}</span>
+                                                    </td>
+                                                    <td style={{ padding: '12px', color: '#dc2626', fontWeight: 500 }}>{d.removedSubmissionDate}</td>
+                                                    <td style={{ padding: '12px', color: '#16a34a', fontWeight: 700 }}>{d.keptSubmissionDate}</td>
+                                                    <td style={{ padding: '12px', fontSize: '0.82rem', color: '#475569' }}>{d.reason}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '1rem' }}>No duplicate submissions found during this import.</div>
+                                )
+                            )}
+
+                            {activeAuditTab === 'disqualified' && (
+                                importAuditReport.disqualified?.length > 0 ? (
+                                    <table className="cohorts-table" style={{ width: '100%', fontSize: '0.88rem', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ background: '#f8fafc' }}>
+                                                <th style={{ padding: '12px' }}>Applicant Name & Email</th>
+                                                <th style={{ padding: '12px' }}>Country / Province</th>
+                                                <th style={{ padding: '12px' }}>Institution</th>
+                                                <th style={{ padding: '12px' }}>Disqualification Reason</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {importAuditReport.disqualified.map((a, idx) => (
+                                                <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <strong style={{ color: '#0f172a' }}>{a.name}</strong><br />
+                                                        <span style={{ color: '#64748b' }}>{a.email}</span>
+                                                    </td>
+                                                    <td style={{ padding: '12px', fontWeight: 600 }}>{a.cohort || a.countryOfResidence}</td>
+                                                    <td style={{ padding: '12px' }}>{a.institution}</td>
+                                                    <td style={{ padding: '12px', color: '#dc2626', fontWeight: 700 }}>{a.disqualificationReason}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                ) : (
+                                    <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '1rem' }}>No auto-disqualified applicants found during this import.</div>
+                                )
+                            )}
+
+                            {activeAuditTab === 'splits' && (
+                                importAuditReport.splits?.length > 0 ? (
+                                    <div style={{ padding: '20px' }}>
+                                        <ul style={{ lineHeight: '2', fontSize: '1rem', color: '#1e293b' }}>
+                                            {importAuditReport.splits.map((s, idx) => (
+                                                <li key={idx}><strong>{s}</strong></li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '1rem' }}>No countries exceeded 40 applicants (no cohort splitting occurred).</div>
+                                )
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
+                            <button onClick={() => setImportAuditReport(prev => ({ ...prev, isOpen: false }))} className="btn-save-screener" style={{ background: '#64748b', margin: 0, padding: '10px 24px', borderRadius: '8px' }}>
+                                Close Audit Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
