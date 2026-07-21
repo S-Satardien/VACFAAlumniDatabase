@@ -24,6 +24,31 @@ const getGoogleViewerUrl = (url) => {
     return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}`;
 };
 
+const getDecisionWeight = (decision, autoDisqualified) => {
+    if (autoDisqualified) return 0;
+    const d = (decision || '').toLowerCase();
+    if (d === 'accept') return 4;
+    if (d === 'pending') return 3;
+    if (d === 'reject') return 2;
+    return 1;
+};
+
+const compareScoreAndDecision = (appX, appY, scX, scY) => {
+    const rx = scX?.rankInCountry ? Number(scX.rankInCountry) : 9999;
+    const ry = scY?.rankInCountry ? Number(scY.rankInCountry) : 9999;
+    if (rx !== ry) return rx - ry;
+
+    const scoreX = scX?.totalScore !== undefined ? Number(scX.totalScore) : (appX.autoDisqualified ? -1 : 0);
+    const scoreY = scY?.totalScore !== undefined ? Number(scY.totalScore) : (appY.autoDisqualified ? -1 : 0);
+    if (scoreX !== scoreY) return scoreY - scoreX;
+
+    const dwX = getDecisionWeight(scX?.decision, appX.autoDisqualified);
+    const dwY = getDecisionWeight(scY?.decision, appY.autoDisqualified);
+    if (dwX !== dwY) return dwY - dwX;
+
+    return (appX.name || '').localeCompare(appY.name || '');
+};
+
 const ScreeningWorkspace = () => {
     const { currentUser } = useAuth();
     const [selectedYear, setSelectedYear] = useState('2026');
@@ -223,10 +248,18 @@ const ScreeningWorkspace = () => {
             };
         });
 
-        // Sort by Total Score descending and Rank ascending
+        // Sort by Total Score descending and Decision priority (Accept > Pending > Reject > DQ)
         dataToExport.sort((x, y) => {
-            if (x["Rank in Cohort"] && y["Rank in Cohort"]) return x["Rank in Cohort"] - y["Rank in Cohort"];
-            return (Number(y["Total Score"]) || 0) - (Number(x["Total Score"]) || 0);
+            if (x["Rank in Cohort"] && y["Rank in Cohort"]) return Number(x["Rank in Cohort"]) - Number(y["Rank in Cohort"]);
+            const scoreX = x["Total Score"] !== '' && x["Total Score"] !== undefined ? Number(x["Total Score"]) : (x["Auto Disqualified Flag"] === 'YES' ? -1 : 0);
+            const scoreY = y["Total Score"] !== '' && y["Total Score"] !== undefined ? Number(y["Total Score"]) : (y["Auto Disqualified Flag"] === 'YES' ? -1 : 0);
+            if (scoreX !== scoreY) return scoreY - scoreX;
+
+            const dwX = getDecisionWeight(x["Accept/Reject"], x["Auto Disqualified Flag"] === 'YES');
+            const dwY = getDecisionWeight(y["Accept/Reject"], y["Auto Disqualified Flag"] === 'YES');
+            if (dwX !== dwY) return dwY - dwX;
+
+            return (x["Name"] || '').localeCompare(y["Name"] || '');
         });
 
         const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -505,12 +538,7 @@ const ScreeningWorkspace = () => {
                         <tbody>
                             {cohortApplicants
                                 .slice()
-                                .sort((x, y) => {
-                                    const rx = scores[x.id]?.rankInCountry || 9999;
-                                    const ry = scores[y.id]?.rankInCountry || 9999;
-                                    if (rx !== ry) return rx - ry;
-                                    return (Number(scores[y.id]?.totalScore) || 0) - (Number(scores[x.id]?.totalScore) || 0);
-                                })
+                                .sort((x, y) => compareScoreAndDecision(x, y, scores[x.id], scores[y.id]))
                                 .map(app => {
                                     const sc = scores[app.id] || {};
                                     const total = sc.totalScore !== undefined ? sc.totalScore : (app.autoDisqualified ? 'DQ' : '-');

@@ -9,6 +9,31 @@ import ScoringForm from './ScoringForm';
 import * as XLSX from 'xlsx';
 import './ScreeningAdmin.css';
 
+const getDecisionWeight = (decision, autoDisqualified) => {
+    if (autoDisqualified) return 0;
+    const d = (decision || '').toLowerCase();
+    if (d === 'accept') return 4;
+    if (d === 'pending') return 3;
+    if (d === 'reject') return 2;
+    return 1;
+};
+
+const compareScoreAndDecision = (appX, appY, scX, scY) => {
+    const rx = scX?.rankInCountry ? Number(scX.rankInCountry) : 9999;
+    const ry = scY?.rankInCountry ? Number(scY.rankInCountry) : 9999;
+    if (rx !== ry) return rx - ry;
+
+    const scoreX = scX?.totalScore !== undefined ? Number(scX.totalScore) : (appX.autoDisqualified ? -1 : 0);
+    const scoreY = scY?.totalScore !== undefined ? Number(scY.totalScore) : (appY.autoDisqualified ? -1 : 0);
+    if (scoreX !== scoreY) return scoreY - scoreX;
+
+    const dwX = getDecisionWeight(scX?.decision, appX.autoDisqualified);
+    const dwY = getDecisionWeight(scY?.decision, appY.autoDisqualified);
+    if (dwX !== dwY) return dwY - dwX;
+
+    return (appX.name || '').localeCompare(appY.name || '');
+};
+
 const ScreeningAdmin = () => {
     const { currentUser } = useAuth();
     const [selectedYear, setSelectedYear] = useState('2026');
@@ -201,6 +226,19 @@ const ScreeningAdmin = () => {
             };
         });
 
+        masterRows.sort((x, y) => {
+            if (x["Rank in Cohort"] && y["Rank in Cohort"]) return Number(x["Rank in Cohort"]) - Number(y["Rank in Cohort"]);
+            const scoreX = x["Total Score"] !== '' && x["Total Score"] !== undefined ? Number(x["Total Score"]) : (x["Auto Disqualified"] === 'YES' ? -1 : 0);
+            const scoreY = y["Total Score"] !== '' && y["Total Score"] !== undefined ? Number(y["Total Score"]) : (y["Auto Disqualified"] === 'YES' ? -1 : 0);
+            if (scoreX !== scoreY) return scoreY - scoreX;
+
+            const dwX = getDecisionWeight(x["Final Decision"], x["Auto Disqualified"] === 'YES');
+            const dwY = getDecisionWeight(y["Final Decision"], y["Auto Disqualified"] === 'YES');
+            if (dwX !== dwY) return dwY - dwX;
+
+            return (x["Name"] || '').localeCompare(y["Name"] || '');
+        });
+
         const masterWs = XLSX.utils.json_to_sheet(masterRows);
         XLSX.utils.book_append_sheet(wb, masterWs, "All Applicants Master");
 
@@ -259,8 +297,16 @@ const ScreeningAdmin = () => {
                         };
                     })
                     .sort((x, y) => {
-                        if (x["Rank"] && y["Rank"]) return x["Rank"] - y["Rank"];
-                        return (Number(y["Total Score"]) || 0) - (Number(x["Total Score"]) || 0);
+                        if (x["Rank"] && y["Rank"]) return Number(x["Rank"]) - Number(y["Rank"]);
+                        const scoreX = x["Total Score"] !== '' && x["Total Score"] !== undefined && x["Total Score"] !== 'DQ' ? Number(x["Total Score"]) : -1;
+                        const scoreY = y["Total Score"] !== '' && y["Total Score"] !== undefined && y["Total Score"] !== 'DQ' ? Number(y["Total Score"]) : -1;
+                        if (scoreX !== scoreY) return scoreY - scoreX;
+
+                        const dwX = getDecisionWeight(x["Decision"], x["Total Score"] === 'DQ');
+                        const dwY = getDecisionWeight(y["Decision"], y["Total Score"] === 'DQ');
+                        if (dwX !== dwY) return dwY - dwX;
+
+                        return (x["Name"] || '').localeCompare(y["Name"] || '');
                     });
 
                 const ws = XLSX.utils.json_to_sheet(rows);
@@ -618,7 +664,7 @@ const ScreeningAdmin = () => {
         ) : true;
 
         return cohortMatch && statusMatch && searchMatch;
-    });
+    }).sort((x, y) => compareScoreAndDecision(x, y, scores[x.id], scores[y.id]));
 
     const totalScored = applicants.filter(a => scores[a.id] && scores[a.id].totalScore !== undefined).length;
     const totalDQ = applicants.filter(a => a.autoDisqualified).length;
