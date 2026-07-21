@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, firebaseConfig } from '../firebaseConfig';
@@ -239,7 +239,7 @@ const ScreeningAdmin = () => {
     const handleImportExcel = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (!window.confirm(`Are you sure you want to import applicants from "${file.name}" into AAVC ${selectedYear}?\n\nThis will automatically parse South African provinces and run 5-year auto-disqualification checks against the alumni database.`)) {
+        if (!window.confirm(`Are you sure you want to import applicants from "${file.name}" into AAVC ${selectedYear}?\n\nThis will:\n1. CLEAR all existing applicants for ${selectedYear}\n2. Remove duplicate submissions\n3. Split large countries into cohorts of max 30\n4. Run 5-year auto-disqualification checks`)) {
             e.target.value = null;
             return;
         }
@@ -251,20 +251,39 @@ const ScreeningAdmin = () => {
             const firstSheet = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
 
-            setImportProgress(`Checking ${rows.length} applicants against existing alumni database...`);
-            const alumniSnap = await getDocs(collection(db, "alumni"));
-            const alumniList = alumniSnap.docs.map(d => d.data());
-
-            let count = 0;
-            let dqCount = 0;
+            // --- Step 0: Clear existing applicants for this year ---
             const targetCollName = `applicants_${selectedYear}`;
             const targetNumYear = parseInt(selectedYear, 10) || 2026;
+            setImportProgress(`Clearing existing ${selectedYear} applicant data...`);
+            const existingSnap = await getDocs(collection(db, "alumni", "screening_data", targetCollName));
+            const deletePromises = existingSnap.docs.map(d => deleteDoc(doc(db, "alumni", "screening_data", targetCollName, d.id)));
+            await Promise.all(deletePromises);
+            setImportProgress(`Cleared ${existingSnap.docs.length} existing records. Processing ${rows.length} rows...`);
 
+            // --- Step 1: Deduplicate rows (keep last submission per email, fallback to name) ---
+            const dedupMap = new Map();
+            let totalRawRows = 0;
             for (const r of rows) {
                 const rawEmail = String(r['Email'] || r['email'] || r['E-mail'] || '').trim().toLowerCase();
                 const rawName = String(r['Name'] || r['name'] || r['Full Name'] || '').trim();
                 if (!rawName && !rawEmail) continue;
+                totalRawRows++;
+                const dedupKey = rawEmail || rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                dedupMap.set(dedupKey, r); // last submission wins
+            }
+            const uniqueRows = Array.from(dedupMap.values());
+            const duplicatesRemoved = totalRawRows - uniqueRows.length;
+            setImportProgress(`Removed ${duplicatesRemoved} duplicate(s). Processing ${uniqueRows.length} unique applicants...`);
 
+            // --- Step 2: Fetch alumni for DQ checks ---
+            const alumniSnap = await getDocs(collection(db, "alumni"));
+            const alumniList = alumniSnap.docs.map(d => d.data());
+
+            // --- Step 3: Process each unique row (DQ check + country/cohort assignment) ---
+            const processedApplicants = [];
+            for (const r of uniqueRows) {
+                const rawEmail = String(r['Email'] || r['email'] || r['E-mail'] || '').trim().toLowerCase();
+                const rawName = String(r['Name'] || r['name'] || r['Full Name'] || '').trim();
                 const emailPrefix = rawEmail.split('@')[0] || '';
                 const cleanName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -336,14 +355,14 @@ const ScreeningAdmin = () => {
                     }
                 }
 
-                const docId = rawEmail ? rawEmail.replace(/[^a-z0-9]/g, '_') : `app_${Date.now()}_${count}`;
-                const payload = {
+                const docId = rawEmail ? rawEmail.replace(/[^a-z0-9]/g, '_') : `app_${Date.now()}_${processedApplicants.length}`;
+                processedApplicants.push({
                     id: docId,
                     name: rawName,
                     email: rawEmail,
                     gender: String(r['Gender'] || ''),
                     countryOfResidence: rawCountry,
-                    cohort: cohort,
+                    cohort: cohort, // preliminary — will be updated by cohort splitting
                     province: rawProvince,
                     institution: String(r['Name of your Institution'] || r['Institution'] || ''),
                     currentPosition: String(r['Current Position'] || ''),
@@ -362,17 +381,59 @@ const ScreeningAdmin = () => {
                     autoDisqualified: isDQ,
                     disqualificationReason: dqReason,
                     importedAt: new Date().toISOString()
-                };
+                });
+            }
 
-                await setDoc(doc(db, "alumni", "screening_data", targetCollName, docId), payload);
-                count++;
-                if (isDQ) dqCount++;
-                if (count % 15 === 0) {
-                    setImportProgress(`Imported ${count} of ${rows.length} applicants... (${dqCount} disqualified)`);
+            // --- Step 4: Cohort splitting (>40 → random chunks of max 30, skip SA- provinces) ---
+            setImportProgress('Splitting large cohorts into groups of max 30...');
+            const cohortGroups = {};
+            for (const app of processedApplicants) {
+                if (!cohortGroups[app.cohort]) cohortGroups[app.cohort] = [];
+                cohortGroups[app.cohort].push(app);
+            }
+
+            // Fisher-Yates shuffle helper
+            const shuffle = (arr) => {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            };
+
+            const cohortSplitSummary = [];
+            for (const [cohortName, members] of Object.entries(cohortGroups)) {
+                // Skip SA provinces from splitting — they stay as-is
+                if (cohortName.startsWith('SA-')) continue;
+                if (members.length > 40) {
+                    shuffle(members);
+                    const chunkSize = 30;
+                    const numChunks = Math.ceil(members.length / chunkSize);
+                    for (let i = 0; i < numChunks; i++) {
+                        const chunkMembers = members.slice(i * chunkSize, (i + 1) * chunkSize);
+                        const newCohortLabel = `${cohortName} Cohort ${i + 1}`;
+                        for (const app of chunkMembers) {
+                            app.cohort = newCohortLabel;
+                        }
+                    }
+                    cohortSplitSummary.push(`${cohortName}: ${members.length} → ${numChunks} cohorts`);
                 }
             }
 
-            alert(`Successfully imported ${count} applicants into AAVC ${selectedYear}!\nTotal Auto-Disqualified: ${dqCount}`);
+            // --- Step 5: Write all to Firestore ---
+            let count = 0;
+            let dqCount = 0;
+            for (const payload of processedApplicants) {
+                await setDoc(doc(db, "alumni", "screening_data", targetCollName, payload.id), payload);
+                count++;
+                if (payload.autoDisqualified) dqCount++;
+                if (count % 15 === 0) {
+                    setImportProgress(`Writing ${count} of ${processedApplicants.length} to database...`);
+                }
+            }
+
+            const splitInfo = cohortSplitSummary.length > 0 ? `\n\nCohort Splits:\n${cohortSplitSummary.join('\n')}` : '';
+            alert(`Successfully imported ${count} unique applicants into AAVC ${selectedYear}!\nDuplicates removed: ${duplicatesRemoved}\nAuto-Disqualified: ${dqCount}${splitInfo}`);
             fetchData();
         } catch (err) {
             console.error("Excel import error:", err);

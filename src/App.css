@@ -80,7 +80,7 @@
 #root {
   margin: 0 auto;
   padding: 0;
-  text-align: center;
+  text-align: left;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
