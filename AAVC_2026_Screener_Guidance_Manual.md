@@ -25,37 +25,52 @@ For the 2026 intake, we have transitioned from manual Excel spreadsheets and One
    - *(Note: The portal features smart case-sensitivity handling, so typing your email or password with capital letters will automatically log you in cleanly).*
 3. Click the **dark blue `Log In` button** located at the bottom of the login card. You will be taken immediately to your personalized **Screening Workspace**.
 
-### 2. Understanding Your Screening Workspace
-Once logged in, the portal automatically filters applications to display only the countries and provinces assigned specifically to you:
-- **Cohort / Country Tabs**: Located along the **top horizontal bar** of your workspace, you will see rounded tabs for each of your assigned cohorts (*e.g., `Nigeria`, `SA-WC`, `Kenya`*). Click any tab to view the applicant table for that specific pool.
-- **Applicant Leaderboard Table**: Located directly **below the country tabs**, this main table lists all applicants from the selected country. Each row displays the candidate’s name, institution, current position, total score, decision status (`Accept`, `Pending`, `Reject`), and their numerical rank.
-- **Sorting & Prioritization**: As you score candidates, the portal automatically sorts the table by **Score & Decision Priority**, giving you a live leaderboard of the top candidates in each country.
+### 2. Understanding Your Screening Workspace Layout
+Once logged in, your workspace is organized into three main sections:
+
+1. **Top Control & View Bar**:
+   - **Select Cohort / Province Dropdown**: Located at the top left next to *Screening Year: AAVC 2026*. Click this dropdown to select the specific country/cohort you want to review (*e.g., `Algeria`, `Nigeria`, `SA-WC`*).
+   - **Progress Bar**: Displays real-time progress for your selected cohort (*e.g., `Progress for Algeria: 0 / 1 Scored`*).
+   - **View Mode Buttons** (*Top Right*):
+     - `📄 Review & Score Queue` (*Active default view for reviewing individual candidates*)
+     - `🏅 Cohort Ranking Table` (*Switch to view the full sorted leaderboard once scoring is done*)
+     - `📊 Export Cohort Excel` (*Export cohort data*)
+
+2. **Left Sidebar (*Applicant Queue*)**:
+   - Contains a search bar (*Search applicant...*) and a status filter dropdown.
+   - Lists all applicants belonging to the selected cohort as individual white cards showing their name, institution, and decision status pill (*e.g., `PENDING` in yellow*).
+   - **Clicking any applicant's card on the left sidebar** loads their complete profile and scoring card into the main right window.
+
+3. **Main Right Window (*Application Info, Documents & Scoring*)**:
+   - Displays the selected candidate's full profile cards, uploaded document buttons, and scoring card.
 
 ---
 
 ## Part 2: Step-by-Step Screening & Scoring Workflow
 
-To begin evaluating an applicant, look at the rightmost column of their row in the applicant table and click the **bright blue button with the pencil icon (`✏️ Review / Score`)**. This opens a popup modal with two side-by-side panels: the **Application Details & Documents Card** (*on the left*) and the **Interactive Scoring Card** (*on the right*).
+### Step 1 – Select Applicant & Review Background Info
+1. Select your assigned cohort from the **Select Cohort / Province** dropdown at the top.
+2. Click an applicant's card on the **left sidebar** to load their file into the main right window.
+3. **Review Summary Cards (*Shown Directly on Screen*)**: You do not need to open a separate application form file. The candidate's information is displayed directly on the screen across four summary cards:
+   - **Demographics & Contact**: DOB, Gender, Nationality, Residence, Mobile.
+   - **Professional & Institution**: Current Position, Institution Name & Address, Highest Education.
+   - **Vaccinology & NITAG Background**: Shows **Previous AAVC** attendance answer (*Yes/No*), NITAG membership, English proficiency, and other courses.
+   - **Line Manager Information**: Supervisor Name, Email, and Phone Contact.
 
-### Step 1 – Check Prior Attendance & Demographic Details
-Look at the **left panel** of the popup window (*Documents & Application Info*):
-1. **Application Form Details (*Shown Directly on Screen*)**: You do not need to open or download an application form. The candidate's self-reported demographic details, line manager name/email, current position description, and motivation summary are **displayed directly on the screen** inside the left panel.
-2. **Automated Alumni Match**: Look at the top header bar of the popup. The system automatically checks whether the candidate's name or email appears in our 5-year historical AAVC alumni database (*indicated by the `Alumni Match` badge*).
-3. **Self-Reported Attendance**: Review what the candidate selected under **Previous AAVC** directly on the left panel.
-4. **Outright Rejection Rule**: If it is confirmed that the applicant has attended the AAVC in person before, go to the right panel (*Scoring Card*), select **`Yes (-1 pt - DQ)`** under *Attended AAVC previously?*, set the **Decision** dropdown to **`Reject`**, and enter a comment stating `"Previously attended course"`. Click the **large green `💾 Save Score & Evaluation` button** at the bottom right. You do not need to score the remaining sections for an outright rejection. If they have **not** attended in person, proceed to Step 2.
+4. **Outright Rejection Rule (Prior Attendance)**: Check the **Previous AAVC** field under *Vaccinology & NITAG Background*. If it is confirmed that the applicant has attended AAVC in person before, scroll down to the bottom scoring card, select **`Yes (-1 pt - DQ)`** under *Attended AAVC previously?*, set the **Decision** dropdown to **`Reject`**, enter a comment stating `"Previously attended course"`, and click the **large green `💾 Save Score & Evaluation` button**. You do not need to score the remaining criteria. If they have **not** attended in person, proceed to Step 2.
 
 ---
 
-### Step 2 – Open & Verify Submitted Documents
-In the middle of the **left panel** (*Documents & Application Info*), you will find **blue underlined clickable links** for the candidate's uploaded files (*hosted securely via JotForm*). Click each link to open the file in a new browser tab:
-- **[View CV]**: Check that the Curriculum Vitae is **strictly maximum 2 pages**.
-- **[View Motivation Letter]**: Check that the Motivation Letter is **strictly maximum 1 page**.
-- **[View Recommendation Letter]**: Check that the official institutional/supervisor recommendation is **strictly maximum 1 page**.
+### Step 2 – Open & Verify Uploaded Supporting Documents
+In the middle section of the main window under **Uploaded Supporting Documents (Click to Open in New Tab)**, click the colorful pill buttons to open each submitted document in a new browser tab:
+- **`📄 Open Abridged CV (Inline)`** (*Blue Button*): Verify that the CV is **strictly maximum 2 pages**.
+- **`✍️ Open Motivation Letter (Inline)`** (*Yellow Button*): Verify that the Motivation Letter is **strictly maximum 1 page**.
+- **`📑 Open HOD Support Letter (Inline)`** (*Purple/Lavender Button*): Verify that the Recommendation/Support Letter is **strictly maximum 1 page**.
 
 ---
 
 ### Step 3 – Score the Rubric Criteria
-On the **right panel** (*Interactive Scoring Card*), click the round radio buttons to assign points for each criterion based on the official AAVC scoring guidelines. The top of the card will display the calculated running total (*Maximum possible: **6 points***).
+Scroll down to the **Scoring Card** at the **bottom of the main window**. Click the round radio buttons to assign points for each criterion based on the official AAVC scoring guidelines. The running total (*Maximum possible: **6 points***) will update automatically:
 
 | Rubric Criterion | Point Options & Selection Guidance |
 | :--- | :--- |
@@ -69,7 +84,7 @@ On the **right panel** (*Interactive Scoring Card*), click the round radio butto
 ---
 
 ### Step 4 – Select Standardized Comments & Add Notes
-Below the scoring criteria on the right panel, you will find a **Multi-Select Comments Bank** grouped by decision category. Click one or more of the colored badges to attach standardized feedback, or type custom notes in the text box right below:
+Below the rubric criteria on the scoring card, click one or more of the colored badges in the **Multi-Select Comments Bank** to attach standardized feedback, or type custom notes in the text box right below:
 
 - **🟢 Acceptance / High Priority Presets (*Green Badges*)**:
   - `Directly involved in national immunization program`
@@ -88,19 +103,20 @@ Below the scoring criteria on the right panel, you will find a **Multi-Select Co
 
 ---
 
-### Step 5 – Save the Score & Set Initial Decision
-1. **Assign Decision**: Using the **Decision** dropdown at the bottom of the right panel, select `Accept`, `Pending / Reserve`, or `Reject`.
-2. **Leave Rank Blank Initially**: **Do not assign a numerical rank yet!** You must score and save evaluations for all members of the country/cohort first before you can accurately compare and rank them relative to each other.
-3. Click the **large green `💾 Save Score & Evaluation` button** located at the bottom right corner of the popup window. This saves your evaluation to the cloud database and returns you to the main table.
+### Step 5 – Save Score & Initial Decision (*Crucial Step*)
+1. **Assign Decision**: Using the **Decision** dropdown at the bottom of the scoring card, select `Accept`, `Pending / Reserve`, or `Reject`.
+2. **Leave Rank Blank Initially**: **Do not assign a numerical rank yet!** You cannot rank a cohort member until you have scored and saved all applicants in that cohort.
+3. Click the **large green `💾 Save Score & Evaluation` button** at the bottom of the scoring card. This saves your score and evaluation to the database and marks the applicant as scored.
 
 ---
 
 ## Part 3: Finalizing Country Rankings & Selection Rules
 
-Once you have completed and saved scores for **all applicants within a country**, you can now perform the final cohort ranking:
+Once you have evaluated and clicked **Save** for **all applicants within a country cohort**:
 
-1. **Review the Sorted Leaderboard**: Look at the main applicant table under that country's tab. The portal automatically lists candidates ordered from highest score to lowest score.
-2. **Assign Sequential Ranks**: Click **`✏️ Review / Score`** on each applicant (or enter directly in the table box if enabled) and input their sequential numerical ranking (`1`, `2`, `3`, `4`, etc.) into the **`Rank in Country`** input box, then click the **large green `💾 Save Score & Evaluation` button**.
+1. **Switch to the Leaderboard View**: Click the **`🏅 Cohort Ranking Table` button** located at the top right of the header control bar.
+2. **Review the Sorted Leaderboard**: The table displays all applicants in the cohort automatically sorted from highest score to lowest score and by decision priority.
+3. **Assign Sequential Ranks**: Input their numerical ranking (`1`, `2`, `3`, `4`, etc.) into the **`Rank in Country`** box for each applicant, then click the **large green `💾 Save Score & Evaluation` button** to confirm.
    - *CRITICAL*: **You must rank ALL applicants from the same country sequentially (`1` to `N`)**, including rejected or reserve candidates! This numerical ranking allows the committee to immediately extend invitations to the next-highest ranked candidate (`#3`, `#4`, etc.) if a top-ranked applicant (`#1` or `#2`) is unable to attend.
 
 ### Official Acceptance Quotas per Country:
