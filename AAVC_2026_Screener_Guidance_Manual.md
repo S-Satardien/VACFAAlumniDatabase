@@ -67,6 +67,10 @@ In the middle section of the main window under **Uploaded Supporting Documents (
 - **`✍️ Open Motivation Letter (Inline)`** (*Yellow Button*): Verify that the Motivation Letter is **strictly maximum 1 page**.
 - **`📑 Open HOD Support Letter (Inline)`** (*Purple/Lavender Button*): Verify that the Recommendation/Support Letter is **strictly maximum 1 page**.
 
+#### ⚠️ Document Length Discretion & Rejection Rule:
+- **Within Limits / Slightly Over**: If all three documents are within the required page limits (*use your discretion if a document is just a little over*), proceed with scoring the rest of the application.
+- **Excessively Long Documents**: If the documents are excessively long and the rules of document length have not been adhered to, use your discretion to reject the applicant. Set the **Decision** dropdown to **`Reject`** and enter a custom comment stating why they were rejected (*e.g., `"CV is over 10 pages; exceeds document length rules"`*).
+
 ---
 
 ### Step 3 – Score the Rubric Criteria
