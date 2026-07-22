@@ -10,6 +10,9 @@ import './ScreeningWorkspace.css';
 
 const JOTFORM_API_KEY = "cc1659334334a0b6e3dc064810034a89";
 
+/** YouTube embed URL for the screening video walkthrough. */
+const GUIDE_VIDEO_EMBED_URL = "https://www.youtube.com/embed/1XCItna8rZI";
+
 const getDocUrl = (url) => {
     if (!url) return '';
     const cleanUrl = String(url).trim();
@@ -63,6 +66,7 @@ const ScreeningWorkspace = () => {
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('review'); // 'review' | 'ranking'
+    const [showVideoModal, setShowVideoModal] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -361,6 +365,23 @@ const ScreeningWorkspace = () => {
                     <button onClick={handleExportCohortExcel} className="btn-export-cohort">
                         📊 Export Cohort Excel
                     </button>
+                    <span style={{ borderLeft: '2px solid rgba(255,255,255,0.3)', height: '28px', margin: '0 4px' }} />
+                    <a 
+                        href={`${import.meta.env.BASE_URL}guides/AAVC_Screening_Manual.pdf`}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="btn-help-resource"
+                        style={{ background: '#198754', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                        📖 Screening Manual
+                    </a>
+                    <button 
+                        onClick={() => setShowVideoModal(true)}
+                        className="btn-help-resource"
+                        style={{ background: '#6f42c1', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                        🎬 Video Walkthrough
+                    </button>
                 </div>
             </div>
 
@@ -576,6 +597,38 @@ const ScreeningWorkspace = () => {
                                 })}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {showVideoModal && (
+                <div 
+                    className="video-modal-overlay" 
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => setShowVideoModal(false)}
+                >
+                    <div 
+                        style={{ background: '#1e293b', borderRadius: '12px', padding: '16px', width: '90%', maxWidth: '900px', position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                            <h3 style={{ color: '#fff', margin: 0, fontSize: '18px' }}>🎬 Screening Process – Video Walkthrough</h3>
+                            <button 
+                                onClick={() => setShowVideoModal(false)} 
+                                style={{ background: '#dc3545', color: '#fff', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, overflow: 'hidden', borderRadius: '8px' }}>
+                            <iframe 
+                                src={GUIDE_VIDEO_EMBED_URL}
+                                title="AAVC Screening Video Walkthrough"
+                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
