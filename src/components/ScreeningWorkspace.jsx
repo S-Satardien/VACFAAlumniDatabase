@@ -11,7 +11,7 @@ import './ScreeningWorkspace.css';
 const JOTFORM_API_KEY = "cc1659334334a0b6e3dc064810034a89";
 
 /** YouTube embed URL for the screening video walkthrough. */
-const GUIDE_VIDEO_EMBED_URL = "https://www.youtube.com/embed/1XCItna8rZI";
+const GUIDE_VIDEO_EMBED_URL = "https://www.youtube.com/embed/FQFjKUU03fE";
 
 const getDocUrl = (url) => {
     if (!url) return '';
