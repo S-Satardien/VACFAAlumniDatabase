@@ -10,8 +10,8 @@ import './ScreeningWorkspace.css';
 
 const JOTFORM_API_KEY = "cc1659334334a0b6e3dc064810034a89";
 
-/** YouTube embed URL for the screening video walkthrough. */
-const GUIDE_VIDEO_EMBED_URL = "https://www.youtube.com/embed/FQFjKUU03fE";
+/** Google Drive embed URL for the screening video walkthrough. */
+const GUIDE_VIDEO_EMBED_URL = "https://drive.google.com/file/d/18Mt_JIbNk-k9JgXeEo4D-g7GbldmdD1Q/preview";
 
 const getDocUrl = (url) => {
     if (!url) return '';
