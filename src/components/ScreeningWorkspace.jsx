@@ -378,10 +378,17 @@ const ScreeningWorkspace = () => {
                     <button 
                         onClick={() => setShowVideoModal(true)}
                         className="btn-help-resource"
-                        style={{ background: '#6f42c1', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        style={{ background: '#6366f1', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                         🎬 Video Walkthrough
                     </button>
+                    <a 
+                        href="mailto:saleem.satardien@uct.ac.za?subject=AAVC%20Screening%20Portal%20Technical%20Help"
+                        className="btn-help-resource"
+                        style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    >
+                        🛠️ Technical Help
+                    </a>
                 </div>
             </div>
 

@@ -397,10 +397,9 @@
 }
 
 .comments-cell {
-    max-width: 260px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    max-width: 300px;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 @media (max-width: 1024px) {
