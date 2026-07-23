@@ -212,10 +212,16 @@ const ScreeningAdmin = () => {
         // 1. Master Sheet (All Applicants)
         const masterRows = applicants.map(a => {
             const sc = scores[a.id] || {};
+            const assignedScreenerNames = assignments
+                .filter(assign => (assign.assignedCountries || []).includes(a.cohort || a.countryOfResidence))
+                .map(assign => assign.screenerName || assign.screenerEmail)
+                .join(', ');
+
             return {
                 "Submission Date": a.submissionDate || '',
                 "Name": a.name || '',
                 "Email": a.email || '',
+                "Assigned Screener": assignedScreenerNames || 'Not Assigned',
                 "DOB": a.dateOfBirth || '',
                 "Gender": a.gender || '',
                 "Nationality": a.nationality || '',
@@ -946,15 +952,40 @@ const ScreeningAdmin = () => {
                                                 <strong>{a.screenerName}</strong>
                                                 <span className="assign-email">{a.screenerEmail}</span>
                                             </div>
-                                            <div style={{ fontSize: '13px', color: '#0f172a', fontWeight: '600', marginBottom: '6px' }}>
-                                                Total Workload: <span style={{ color: '#2563eb' }}>{applicants.filter(app => (a.assignedCountries || []).includes(app.cohort || app.countryOfResidence)).length}</span> Applicants
-                                            </div>
-                                            <div className="assign-badges">
-                                                {(a.assignedCountries || []).map(c => (
-                                                    <span key={c} className="assign-cohort-badge">{c}</span>
-                                                ))}
-                                                {(a.assignedCountries || []).length === 0 && <span className="text-muted">No countries assigned yet</span>}
-                                            </div>
+                                            {(() => {
+                                                const assignedApps = applicants.filter(app => !app.autoDisqualified && (a.assignedCountries || []).includes(app.cohort || app.countryOfResidence));
+                                                const totalScored = assignedApps.filter(app => scores[app.id]?.totalScore !== undefined).length;
+                                                const totalApps = assignedApps.length;
+                                                const percentage = totalApps > 0 ? Math.round((totalScored / totalApps) * 100) : 0;
+                                                
+                                                return (
+                                                    <div style={{ marginTop: '8px', marginBottom: '12px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                                        <div style={{ fontSize: '13.5px', color: '#0f172a', fontWeight: '700', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+                                                            <span>Overall Progress:</span>
+                                                            <span style={{ color: totalScored === totalApps && totalApps > 0 ? '#16a34a' : '#2563eb' }}>
+                                                                {totalScored} / {totalApps} Scored ({percentage}%)
+                                                            </span>
+                                                        </div>
+                                                        {(a.assignedCountries || []).length > 0 ? (
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '8px', fontSize: '12px', color: '#475569' }}>
+                                                                {(a.assignedCountries || []).map(c => {
+                                                                    const cApps = assignedApps.filter(app => (app.cohort || app.countryOfResidence) === c);
+                                                                    const cScored = cApps.filter(app => scores[app.id]?.totalScore !== undefined).length;
+                                                                    const isComplete = cApps.length > 0 && cScored === cApps.length;
+                                                                    return (
+                                                                        <div key={c} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: '#fff', borderRadius: '4px', border: '1px solid #cbd5e0', fontWeight: '500' }}>
+                                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100px' }} title={c}>{c}</span>
+                                                                            <span style={{ color: isComplete ? '#16a34a' : '#64748b' }}>{cScored}/{cApps.length}</span>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted" style={{ fontSize: '12px' }}>No countries assigned yet</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                             <button 
