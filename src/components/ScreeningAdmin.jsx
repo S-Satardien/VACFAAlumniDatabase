@@ -894,16 +894,39 @@ const ScreeningAdmin = () => {
 
                         <label className="select-countries-label">Select Assigned Cohorts / Provinces:</label>
                         <div className="countries-checkbox-grid">
-                            {uniqueCohorts.map(c => (
-                                <label key={c} className={`country-checkbox-item ${selectedCountriesForAssign.includes(c) ? 'active' : ''}`}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedCountriesForAssign.includes(c)}
-                                        onChange={() => handleToggleCountryForAssign(c)}
-                                    />
-                                    <span>{c}</span>
-                                </label>
-                            ))}
+                            {uniqueCohorts.map(c => {
+                                // Find which screeners already have this cohort assigned
+                                const alreadyAssignedTo = assignments
+                                    .filter(a => a.assignedCountries?.includes(c))
+                                    .map(a => a.screenerName || a.screenerEmail);
+                                
+                                const isAlreadyAssigned = alreadyAssignedTo.length > 0;
+                                const isSelected = selectedCountriesForAssign.includes(c);
+
+                                return (
+                                    <label 
+                                        key={c} 
+                                        className={`country-checkbox-item ${isSelected ? 'active' : ''}`}
+                                        style={isAlreadyAssigned && !isSelected ? { background: '#f0fdf4', border: '1px solid #4ade80' } : {}}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isSelected}
+                                                onChange={() => handleToggleCountryForAssign(c)}
+                                            />
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span>{c}</span>
+                                                {isAlreadyAssigned && (
+                                                    <span style={{ fontSize: '11px', color: '#166534', marginTop: '2px', fontWeight: '500' }}>
+                                                        Assigned to: {alreadyAssignedTo.join(', ')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </label>
+                                );
+                            })}
                         </div>
 
                         <button type="submit" className="btn-save-assignment">
@@ -922,6 +945,9 @@ const ScreeningAdmin = () => {
                                             <div className="assign-item-header">
                                                 <strong>{a.screenerName}</strong>
                                                 <span className="assign-email">{a.screenerEmail}</span>
+                                            </div>
+                                            <div style={{ fontSize: '13px', color: '#0f172a', fontWeight: '600', marginBottom: '6px' }}>
+                                                Total Workload: <span style={{ color: '#2563eb' }}>{applicants.filter(app => (a.assignedCountries || []).includes(app.cohort || app.countryOfResidence)).length}</span> Applicants
                                             </div>
                                             <div className="assign-badges">
                                                 {(a.assignedCountries || []).map(c => (
