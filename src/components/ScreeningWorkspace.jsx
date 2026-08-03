@@ -67,6 +67,8 @@ const ScreeningWorkspace = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('review'); // 'review' | 'ranking'
     const [showVideoModal, setShowVideoModal] = useState(false);
+    const [showMoveModal, setShowMoveModal] = useState(false);
+    const [moveTargetCohort, setMoveTargetCohort] = useState('');
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -128,6 +130,45 @@ const ScreeningWorkspace = () => {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const handleMoveApplicant = async () => {
+        if (!selectedApplicant || !moveTargetCohort) return;
+        if (moveTargetCohort === (selectedApplicant.cohort || selectedApplicant.countryOfResidence)) {
+            alert("Applicant is already in this cohort.");
+            return;
+        }
+
+        try {
+            const appCollName = `applicants_${selectedYear}`;
+            const appRef = doc(db, "alumni", "screening_data", appCollName, selectedApplicant.id);
+            
+            // 1. Update applicant doc
+            await setDoc(appRef, { cohort: moveTargetCohort }, { merge: true });
+
+            // 2. Update score doc if exists
+            const scoreId = `score_${selectedApplicant.id}`;
+            const scoreCollName = selectedYear === '2026' ? 'screening_scores' : `screening_scores_${selectedYear}`;
+            if (scores[selectedApplicant.id]) {
+                const scoreRef = doc(db, "alumni", "screening_data", scoreCollName, scoreId);
+                await setDoc(scoreRef, { cohort: moveTargetCohort }, { merge: true });
+            }
+
+            // 3. Update local state
+            setApplicants(prev => prev.map(a => a.id === selectedApplicant.id ? { ...a, cohort: moveTargetCohort } : a));
+            if (scores[selectedApplicant.id]) {
+                setScores(prev => ({ ...prev, [selectedApplicant.id]: { ...prev[selectedApplicant.id], cohort: moveTargetCohort } }));
+            }
+
+            alert(`Applicant successfully moved to ${moveTargetCohort}.`);
+            setShowMoveModal(false);
+            setMoveTargetCohort('');
+            setSelectedApplicant(null);
+
+        } catch (err) {
+            console.error("Error moving applicant:", err);
+            alert("Failed to move applicant. Please try again.");
+        }
+    };
 
     const handleSaveScore = async (formData) => {
         if (!selectedApplicant) return;
@@ -441,7 +482,17 @@ const ScreeningWorkspace = () => {
                                 <div className="detail-header">
                                     <div className="detail-title-box">
                                         <h2>{selectedApplicant.name}</h2>
-                                        <span className="detail-email">{selectedApplicant.email}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span className="detail-email">{selectedApplicant.email}</span>
+                                            {isAdmin && (
+                                                <button 
+                                                    onClick={() => setShowMoveModal(true)}
+                                                    style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                                                >
+                                                    Move Cohort
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     {selectedApplicant.autoDisqualified && (
                                         <div className="dq-banner">
@@ -607,16 +658,10 @@ const ScreeningWorkspace = () => {
                 </div>
             )}
 
+            {/* Video Modal */}
             {showVideoModal && (
-                <div 
-                    className="video-modal-overlay" 
-                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => setShowVideoModal(false)}
-                >
-                    <div 
-                        style={{ background: '#1e293b', borderRadius: '12px', padding: '16px', width: '90%', maxWidth: '900px', position: 'relative', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+                    <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '900px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                             <h3 style={{ color: '#fff', margin: 0, fontSize: '18px' }}>🎬 Screening Process – Video Walkthrough</h3>
                             <button 
@@ -634,6 +679,46 @@ const ScreeningWorkspace = () => {
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
                             />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Move Applicant Modal */}
+            {showMoveModal && selectedApplicant && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                        <h3 style={{ marginTop: 0, color: '#1e293b' }}>Move Applicant</h3>
+                        <p style={{ fontSize: '14px', color: '#475569', marginBottom: '16px' }}>
+                            Move <strong>{selectedApplicant.name}</strong> to a different province/cohort. Their scores will be safely transferred.
+                        </p>
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: '#334155' }}>Select New Cohort:</label>
+                            <select 
+                                value={moveTargetCohort} 
+                                onChange={(e) => setMoveTargetCohort(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e0', fontSize: '14px' }}
+                            >
+                                <option value="">-- Choose Cohort --</option>
+                                {uniqueCohorts.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                            <button 
+                                onClick={() => { setShowMoveModal(false); setMoveTargetCohort(''); }}
+                                style={{ padding: '8px 16px', border: '1px solid #cbd5e0', background: '#f8fafc', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', color: '#475569' }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleMoveApplicant}
+                                disabled={!moveTargetCohort || moveTargetCohort === (selectedApplicant.cohort || selectedApplicant.countryOfResidence)}
+                                style={{ padding: '8px 16px', border: 'none', background: '#059669', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontWeight: '600', opacity: (!moveTargetCohort || moveTargetCohort === (selectedApplicant.cohort || selectedApplicant.countryOfResidence)) ? 0.5 : 1 }}
+                            >
+                                Move Applicant
+                            </button>
                         </div>
                     </div>
                 </div>
