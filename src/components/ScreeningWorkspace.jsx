@@ -102,8 +102,11 @@ const ScreeningWorkspace = () => {
                 });
             }
 
-            // Extract cohorts
-            const cohorts = [...new Set(appList.map(a => a.cohort || a.countryOfResidence).filter(Boolean))].sort();
+            // Extract cohorts - always include standard SA provinces so they can be selected/assigned even if empty
+            const cohorts = [...new Set([
+                ...appList.map(a => a.cohort || a.countryOfResidence),
+                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC'
+            ].filter(Boolean))].sort();
 
             setApplicants(appList);
             setScores(scoreMap);

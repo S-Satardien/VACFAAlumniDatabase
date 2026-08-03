@@ -85,7 +85,10 @@ const ScreeningAdmin = () => {
             const assignSnap = await getDocs(collection(db, "alumni", "screening_data", "screening_assignments"));
             const assignList = assignSnap.docs.map(d => ({ ...d.data(), id: d.id }));
 
-            const cohorts = [...new Set(appList.map(a => a.cohort || a.countryOfResidence).filter(Boolean))].sort();
+            const cohorts = [...new Set([
+                ...appList.map(a => a.cohort || a.countryOfResidence),
+                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC'
+            ].filter(Boolean))].sort();
 
             setApplicants(appList);
             setScores(scoreMap);
@@ -578,7 +581,7 @@ const ScreeningAdmin = () => {
                     } else if (rawProvince.includes('EASTERN CAPE') || rawProvince === 'EC' || institutionStr.includes('WALTER SISULU') || institutionStr.includes('FORT HARE') || institutionStr.includes('RHODES')) {
                         cohort = 'SA-EC';
                     } else if (rawProvince.includes('MPUMALANGA') || rawProvince === 'MP') {
-                        cohort = 'SA-MP';
+                        cohort = 'SA- Mpumalanga';
                     } else if (rawProvince.includes('NORTH WEST') || rawProvince === 'NW') {
                         cohort = 'SA-NW';
                     } else if (rawProvince.includes('NORTHERN CAPE') || rawProvince === 'NC') {
