@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { isUserAdmin } from '../config/admins';
@@ -102,10 +102,22 @@ const ScreeningWorkspace = () => {
                 });
             }
 
-            // Extract cohorts - always include standard SA provinces so they can be selected/assigned even if empty
+            // 4. Fetch Custom Cohorts
+            let customCohortsData = [];
+            try {
+                const metaDoc = await getDoc(doc(db, "alumni", "screening_data", "metadata", "custom_cohorts"));
+                if (metaDoc.exists()) {
+                    customCohortsData = metaDoc.data().cohorts || [];
+                }
+            } catch (e) {
+                console.warn("Failed to fetch custom cohorts metadata", e);
+            }
+
+            // Extract cohorts - always include standard SA provinces and custom cohorts
             const cohorts = [...new Set([
                 ...appList.map(a => a.cohort || a.countryOfResidence),
-                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC'
+                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC',
+                ...customCohortsData
             ].filter(Boolean))].sort();
 
             setApplicants(appList);

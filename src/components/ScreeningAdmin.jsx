@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { db, auth, firebaseConfig } from '../firebaseConfig';
@@ -46,6 +46,7 @@ const ScreeningAdmin = () => {
     const [scores, setScores] = useState({});
     const [assignments, setAssignments] = useState([]);
     const [uniqueCohorts, setUniqueCohorts] = useState([]);
+    const [customCohortsList, setCustomCohortsList] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Admin filters
@@ -85,15 +86,28 @@ const ScreeningAdmin = () => {
             const assignSnap = await getDocs(collection(db, "alumni", "screening_data", "screening_assignments"));
             const assignList = assignSnap.docs.map(d => ({ ...d.data(), id: d.id }));
 
+            // 4. Fetch Custom Cohorts
+            let customCohortsData = [];
+            try {
+                const metaDoc = await getDoc(doc(db, "alumni", "screening_data", "metadata", "custom_cohorts"));
+                if (metaDoc.exists()) {
+                    customCohortsData = metaDoc.data().cohorts || [];
+                }
+            } catch (e) {
+                console.warn("Failed to fetch custom cohorts metadata", e);
+            }
+
             const cohorts = [...new Set([
                 ...appList.map(a => a.cohort || a.countryOfResidence),
-                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC'
+                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC',
+                ...customCohortsData
             ].filter(Boolean))].sort();
 
             setApplicants(appList);
             setScores(scoreMap);
             setAssignments(assignList);
             setUniqueCohorts(cohorts);
+            setCustomCohortsList(customCohortsData);
 
         } catch (err) {
             console.error("Error fetching admin data:", err);
@@ -111,6 +125,46 @@ const ScreeningAdmin = () => {
         setSelectedCountriesForAssign(prev => 
             prev.includes(c) ? prev.filter(item => item !== c) : [...prev, c]
         );
+    };
+
+    const [newCustomCohortName, setNewCustomCohortName] = useState('');
+
+    const handleCreateCustomCohort = async (e) => {
+        e.preventDefault();
+        const trimmed = newCustomCohortName.trim();
+        if (!trimmed) return;
+        
+        const newCohorts = [...new Set([...customCohortsList, trimmed])].sort();
+        try {
+            await setDoc(doc(db, "alumni", "screening_data", "metadata", "custom_cohorts"), { cohorts: newCohorts }, { merge: true });
+            setCustomCohortsList(newCohorts);
+            setUniqueCohorts(prev => [...new Set([...prev, trimmed])].sort());
+            setNewCustomCohortName('');
+        } catch (err) {
+            console.error("Error creating custom cohort:", err);
+            alert("Failed to create custom cohort.");
+        }
+    };
+
+    const handleDeleteCustomCohort = async (cohortName) => {
+        if (!window.confirm(`Are you sure you want to delete custom cohort "${cohortName}"? (Applicants already in it won't be deleted)`)) return;
+        
+        const newCohorts = customCohortsList.filter(c => c !== cohortName);
+        try {
+            await setDoc(doc(db, "alumni", "screening_data", "metadata", "custom_cohorts"), { cohorts: newCohorts }, { merge: true });
+            setCustomCohortsList(newCohorts);
+            
+            // Re-evaluate unique cohorts from applicant data to cleanly remove it if empty
+            const cohorts = [...new Set([
+                ...applicants.map(a => a.cohort || a.countryOfResidence),
+                'SA-WC', 'SA-GP', 'SA-KZN', 'SA-LP', 'SA-FS', 'SA-EC', 'SA- Mpumalanga', 'SA-NW', 'SA-NC',
+                ...newCohorts
+            ].filter(Boolean))].sort();
+            setUniqueCohorts(cohorts);
+        } catch (err) {
+            console.error("Error deleting custom cohort:", err);
+            alert("Failed to delete custom cohort.");
+        }
     };
 
     const handleSaveAssignment = async (e) => {
@@ -1005,6 +1059,44 @@ const ScreeningAdmin = () => {
                             </div>
                         ) : (
                             <p className="text-muted">No screener assignments configured yet.</p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Manage Custom Cohorts Panel */}
+                <div style={{ marginTop: '24px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ margin: '0 0 16px 0', color: '#1e293b' }}>Manage Custom Cohorts</h4>
+                    <form onSubmit={handleCreateCustomCohort} style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. SA-FS Cohort 2" 
+                            value={newCustomCohortName}
+                            onChange={(e) => setNewCustomCohortName(e.target.value)}
+                            required
+                            className="assign-input"
+                            style={{ flex: 1, maxWidth: '300px' }}
+                        />
+                        <button type="submit" style={{ background: '#059669', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+                            ➕ Add Cohort
+                        </button>
+                    </form>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {customCohortsList.length === 0 ? (
+                            <span style={{ fontSize: '13px', color: '#64748b' }}>No custom cohorts created.</span>
+                        ) : (
+                            customCohortsList.map(c => (
+                                <div key={c} style={{ background: '#fff', border: '1px solid #cbd5e0', padding: '6px 12px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500' }}>
+                                    {c}
+                                    <button 
+                                        type="button" 
+                                        onClick={() => handleDeleteCustomCohort(c)}
+                                        style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: '0', fontSize: '14px', lineHeight: '1' }}
+                                        title="Delete custom cohort"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))
                         )}
                     </div>
                 </div>
