@@ -35,7 +35,7 @@ const PRESET_GROUPS = [
     }
 ];
 
-const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) => {
+const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving, isAdmin }) => {
     const [formData, setFormData] = useState({
         scorePreviousAAVC: applicant?.autoDisqualified ? -1 : 1,
         scoreCurrentPosition: 2,
@@ -44,7 +44,8 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
         scoreHODLetter: 1,
         scoreCompleteness: 1,
         decision: applicant?.autoDisqualified ? 'Reject' : 'Accept',
-        courseFormat: 'In-Person',
+        courseFormat: 'N/A',
+        isNITAGMember: false,
         comments: applicant?.disqualificationReason || ''
     });
 
@@ -84,7 +85,8 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 scoreHODLetter: existingScore.scoreHODLetter !== undefined ? Number(existingScore.scoreHODLetter) : 1,
                 scoreCompleteness: existingScore.scoreCompleteness !== undefined ? Number(existingScore.scoreCompleteness) : 1,
                 decision: existingScore.decision || 'Accept',
-                courseFormat: existingScore.courseFormat || 'In-Person',
+                courseFormat: existingScore.courseFormat || 'N/A',
+                isNITAGMember: existingScore.isNITAGMember !== undefined ? existingScore.isNITAGMember : false,
                 comments: currentComments
             });
             parseComments(currentComments);
@@ -98,7 +100,8 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 scoreHODLetter: 1,
                 scoreCompleteness: 1,
                 decision: applicant.autoDisqualified ? 'Reject' : 'Accept',
-                courseFormat: 'In-Person',
+                courseFormat: 'N/A',
+                isNITAGMember: false,
                 comments: initialComments
             });
             parseComments(initialComments);
@@ -266,6 +269,18 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
             </div>
 
             <div className="decision-section" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 'bold', color: '#1e293b', cursor: 'pointer' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={formData.isNITAGMember} 
+                            onChange={(e) => handleChange('isNITAGMember', e.target.checked)}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                        ✅ Participant is a NITAG Member
+                    </label>
+                </div>
+
                 <div className="decision-field">
                     <label className="rubric-label">Final Decision</label>
                     <select 
@@ -280,12 +295,16 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 </div>
 
                 <div className="decision-field">
-                    <label className="rubric-label">Course Format (If Accepted)</label>
+                    <label className="rubric-label">
+                        Course Format (If Accepted) 
+                        {!isAdmin && <span style={{ fontSize: '11px', color: '#dc2626', marginLeft: '8px' }}>(Admin only)</span>}
+                    </label>
                     <select 
                         value={formData.courseFormat} 
                         onChange={(e) => handleChange('courseFormat', e.target.value)}
                         className="decision-select"
                         style={{ borderColor: formData.courseFormat === 'Online' ? '#3b82f6' : '#10b981' }}
+                        disabled={!isAdmin}
                     >
                         <option value="In-Person">In-Person</option>
                         <option value="Online">Online</option>

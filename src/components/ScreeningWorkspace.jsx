@@ -597,6 +597,7 @@ const ScreeningWorkspace = () => {
                                     onSave={handleSaveScore}
                                     onCancel={() => setSelectedApplicant(null)}
                                     isSaving={isSaving}
+                                    isAdmin={isAdmin}
                                 />
                             </div>
                         ) : (

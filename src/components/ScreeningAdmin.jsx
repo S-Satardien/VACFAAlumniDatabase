@@ -288,7 +288,7 @@ const ScreeningAdmin = () => {
                 "Province / Cohort": a.cohort || '',
                 "Attended AAVC Previously": a.previouslyAttendedAAVC || 'No',
                 "Score_Previous AAVC": sc.scorePreviousAAVC !== undefined ? sc.scorePreviousAAVC : (a.autoDisqualified ? -1 : 1),
-                "NITAG Member": a.isNITAGMember || 'No',
+                "NITAG Member": sc.isNITAGMember ? 'Yes' : 'No',
                 "Current Position": a.currentPosition || '',
                 "Score_Current position": sc.scoreCurrentPosition !== undefined ? sc.scoreCurrentPosition : '',
                 "CV Score": sc.scoreCVe !== undefined ? sc.scoreCVe : '',
@@ -352,6 +352,27 @@ const ScreeningAdmin = () => {
             });
             const dqWs = XLSX.utils.json_to_sheet(dqRows);
             XLSX.utils.book_append_sheet(wb, dqWs, "Disqualified Applicants");
+        }
+
+        // 1.6. NITAGS Sheet
+        const nitagRows = masterRows.filter(r => r["NITAG Member"] === 'Yes');
+        if (nitagRows.length > 0) {
+            const nitagWs = XLSX.utils.json_to_sheet(nitagRows);
+            XLSX.utils.book_append_sheet(wb, nitagWs, "NITAGS");
+        }
+
+        // 1.7. In-Person Sheet
+        const inPersonRows = masterRows.filter(r => r["Course Format"] === 'In-Person');
+        if (inPersonRows.length > 0) {
+            const inPersonWs = XLSX.utils.json_to_sheet(inPersonRows);
+            XLSX.utils.book_append_sheet(wb, inPersonWs, "In-Person");
+        }
+
+        // 1.8. Online Sheet
+        const onlineRows = masterRows.filter(r => r["Course Format"] === 'Online');
+        if (onlineRows.length > 0) {
+            const onlineWs = XLSX.utils.json_to_sheet(onlineRows);
+            XLSX.utils.book_append_sheet(wb, onlineWs, "Online");
         }
 
         // 2. Individual Sheet per Cohort/Country
@@ -772,7 +793,10 @@ const ScreeningAdmin = () => {
         const statusMatch = statusFilter === 'All' ? true : status === statusFilter;
         
         const formatMatch = formatFilter === 'All' ? true : (sc?.courseFormat === formatFilter);
-        const nitagMatch = nitagFilter ? (a.isNITAGMember && a.isNITAGMember.toLowerCase() !== 'no') : true;
+        
+        // Only consider the applicant a NITAG member if explicitly checked during scoring
+        const actualNitagStatus = sc?.isNITAGMember === true;
+        const nitagMatch = nitagFilter ? actualNitagStatus : true;
 
         const searchMatch = searchTerm ? (
             a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1173,6 +1197,7 @@ const ScreeningAdmin = () => {
                                 onSave={handleSaveOverrideScore}
                                 onCancel={() => setSelectedApplicant(null)}
                                 isSaving={isSaving}
+                                isAdmin={true}
                             />
                         </div>
                     </div>
