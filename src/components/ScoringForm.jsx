@@ -44,6 +44,7 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
         scoreHODLetter: 1,
         scoreCompleteness: 1,
         decision: applicant?.autoDisqualified ? 'Reject' : 'Accept',
+        courseFormat: 'In-Person',
         comments: applicant?.disqualificationReason || ''
     });
 
@@ -83,6 +84,7 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 scoreHODLetter: existingScore.scoreHODLetter !== undefined ? Number(existingScore.scoreHODLetter) : 1,
                 scoreCompleteness: existingScore.scoreCompleteness !== undefined ? Number(existingScore.scoreCompleteness) : 1,
                 decision: existingScore.decision || 'Accept',
+                courseFormat: existingScore.courseFormat || 'In-Person',
                 comments: currentComments
             });
             parseComments(currentComments);
@@ -96,6 +98,7 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                 scoreHODLetter: 1,
                 scoreCompleteness: 1,
                 decision: applicant.autoDisqualified ? 'Reject' : 'Accept',
+                courseFormat: 'In-Person',
                 comments: initialComments
             });
             parseComments(initialComments);
@@ -273,6 +276,20 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving }) =
                         <option value="Accept">Accept</option>
                         <option value="Reject">Reject</option>
                         <option value="Pending">Pending / Under Review</option>
+                    </select>
+                </div>
+
+                <div className="decision-field">
+                    <label className="rubric-label">Course Format (If Accepted)</label>
+                    <select 
+                        value={formData.courseFormat} 
+                        onChange={(e) => handleChange('courseFormat', e.target.value)}
+                        className="decision-select"
+                        style={{ borderColor: formData.courseFormat === 'Online' ? '#3b82f6' : '#10b981' }}
+                    >
+                        <option value="In-Person">In-Person</option>
+                        <option value="Online">Online</option>
+                        <option value="N/A">N/A (Pending/Rejected)</option>
                     </select>
                 </div>
 

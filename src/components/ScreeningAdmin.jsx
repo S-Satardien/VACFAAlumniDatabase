@@ -52,6 +52,8 @@ const ScreeningAdmin = () => {
     // Admin filters
     const [selectedCohort, setSelectedCohort] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [formatFilter, setFormatFilter] = useState('All');
+    const [nitagFilter, setNitagFilter] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedApplicant, setSelectedApplicant] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -238,7 +240,7 @@ const ScreeningAdmin = () => {
                 id: scoreId,
                 applicantId: selectedApplicant.id,
                 screenerId: 'admin_override',
-                screenerEmail: 'Admin Override',
+                screenerEmail: currentUser?.email || 'Admin Override',
                 countryOfResidence: selectedApplicant.countryOfResidence || '',
                 cohort: selectedApplicant.cohort || selectedApplicant.countryOfResidence || '',
                 ...formData,
@@ -296,6 +298,7 @@ const ScreeningAdmin = () => {
                 "Total Score": sc.totalScore !== undefined ? sc.totalScore : '',
                 "Rank in Cohort": sc.rankInCountry || '',
                 "Final Decision": sc.decision || (a.autoDisqualified ? 'Reject' : ''),
+                "Course Format": sc.courseFormat || '',
                 "Comments / Motivation": sc.comments || a.disqualificationReason || '',
                 "Auto Disqualified": a.autoDisqualified ? 'YES' : 'NO'
             };
@@ -767,13 +770,17 @@ const ScreeningAdmin = () => {
         const sc = scores[a.id];
         const status = a.autoDisqualified ? 'Disqualified' : (sc ? 'Scored' : 'Pending');
         const statusMatch = statusFilter === 'All' ? true : status === statusFilter;
+        
+        const formatMatch = formatFilter === 'All' ? true : (sc?.courseFormat === formatFilter);
+        const nitagMatch = nitagFilter ? (a.isNITAGMember && a.isNITAGMember.toLowerCase() !== 'no') : true;
+
         const searchMatch = searchTerm ? (
             a.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             a.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             a.cohort?.toLowerCase().includes(searchTerm.toLowerCase())
         ) : true;
 
-        return cohortMatch && statusMatch && searchMatch;
+        return cohortMatch && statusMatch && formatMatch && nitagMatch && searchMatch;
     }).sort((x, y) => compareScoreAndDecision(x, y, scores[x.id], scores[y.id]));
 
     const totalScored = applicants.filter(a => scores[a.id] && scores[a.id].totalScore !== undefined).length;
@@ -1133,6 +1140,24 @@ const ScreeningAdmin = () => {
                         <option value="Scored">Scored</option>
                         <option value="Disqualified">Disqualified</option>
                     </select>
+                    <select 
+                        value={formatFilter} 
+                        onChange={(e) => setFormatFilter(e.target.value)}
+                        className="admin-select"
+                    >
+                        <option value="All">Format: All</option>
+                        <option value="In-Person">In-Person</option>
+                        <option value="Online">Online</option>
+                        <option value="N/A">N/A</option>
+                    </select>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', fontWeight: 'bold', color: '#1e293b' }}>
+                        <input 
+                            type="checkbox" 
+                            checked={nitagFilter}
+                            onChange={(e) => setNitagFilter(e.target.checked)}
+                        />
+                        NITAG Only
+                    </label>
                 </div>
 
                 {selectedApplicant && (
@@ -1196,8 +1221,9 @@ const ScreeningAdmin = () => {
                                             <button 
                                                 onClick={() => setSelectedApplicant(app)} 
                                                 className="btn-admin-edit"
+                                                style={sc.screenerId === 'admin_override' ? { backgroundColor: '#10b981', color: '#fff', borderColor: '#10b981', fontSize: '11px', padding: '6px' } : {}}
                                             >
-                                                Override / Score
+                                                {sc.screenerId === 'admin_override' ? `Overridden by ${sc.screenerEmail}` : 'Override / Score'}
                                             </button>
                                         </td>
                                     </tr>
