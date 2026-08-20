@@ -277,7 +277,7 @@ const ScoringForm = ({ applicant, existingScore, onSave, onCancel, isSaving, isA
                             onChange={(e) => handleChange('isNITAGMember', e.target.checked)}
                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        ✅ Participant is a NITAG Member
+                        Participant is a NITAG Member
                     </label>
                 </div>
 
