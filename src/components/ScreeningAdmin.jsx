@@ -236,7 +236,9 @@ const ScreeningAdmin = () => {
         setIsSaving(true);
         try {
             const scoreId = `score_${selectedApplicant.id}`;
+            const existingScore = scores[selectedApplicant.id] || {};
             const scorePayload = {
+                ...existingScore,
                 id: scoreId,
                 applicantId: selectedApplicant.id,
                 screenerId: 'admin_override',
